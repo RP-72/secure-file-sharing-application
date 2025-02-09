@@ -162,3 +162,7 @@ CORS_ALLOW_CREDENTIALS = True
 
 # Add to your existing settings
 AUTH_USER_MODEL = 'authentication.User'
+
+# File upload settings
+FILE_UPLOAD_MAX_MEMORY_SIZE = 10 * 1024 * 1024  # 10MB
+DATA_UPLOAD_MAX_MEMORY_SIZE = 10 * 1024 * 1024  # 10MB
