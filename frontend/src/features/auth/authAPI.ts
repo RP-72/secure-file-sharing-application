@@ -1,16 +1,20 @@
 import { createAsyncThunk } from '@reduxjs/toolkit';
 import api from '../../services/api';
+import { RootState } from '../../store/store';
 
 interface LoginCredentials {
-  username: string;
+  email: string;
   password: string;
-  totp_code?: string;
 }
 
 interface SignupData {
-  username: string;
-  password: string;
   email: string;
+  password: string;
+}
+
+interface LoginVerify2FAData {
+  email: string;
+  code: string;
 }
 
 export const login = createAsyncThunk(
@@ -29,18 +33,27 @@ export const signup = createAsyncThunk(
   }
 );
 
-export const setupTwoFactor = createAsyncThunk(
-  'auth/setupTwoFactor',
-  async () => {
-    const response = await api.post('/api/auth/setup-2fa/');
+export const verifyTwoFactor = createAsyncThunk(
+  'auth/verifyTwoFactor',
+  async (code: string, { getState }) => {
+    const state = getState() as RootState;
+    console.log('Verification token being sent:', state.auth.verificationToken);
+    const response = await api.post('/api/auth/verify-2fa/', 
+      { code },
+      {
+        headers: {
+          Authorization: `Bearer ${state.auth.verificationToken}`
+        }
+      }
+    );
     return response.data;
   }
 );
 
-export const verifyTwoFactor = createAsyncThunk(
-  'auth/verifyTwoFactor',
-  async (code: string) => {
-    const response = await api.post('/api/auth/verify-2fa/', { code });
+export const loginVerify2FA = createAsyncThunk(
+  'auth/loginVerify2FA',
+  async (data: LoginVerify2FAData) => {
+    const response = await api.post('/api/auth/login-verify-2fa/', data);
     return response.data;
   }
 ); 

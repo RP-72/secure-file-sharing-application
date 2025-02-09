@@ -40,8 +40,8 @@ api.interceptors.request.use(async (config) => {
       const expiration = payload.exp * 1000; // Convert to milliseconds
       const now = Date.now();
 
-      // If token is expired or will expire in next 30 seconds, refresh it
-      if (expiration - now < 30000) {
+      // If token is expired, refresh it
+      if (expiration < now) {
         const newToken = await refreshToken();
         config.headers.Authorization = `Bearer ${newToken}`;
       } else {
@@ -58,28 +58,5 @@ api.interceptors.request.use(async (config) => {
 }, (error) => {
   return Promise.reject(error);
 });
-
-// Add response interceptor for 401 errors
-api.interceptors.response.use(
-  (response) => response,
-  async (error) => {
-    const originalRequest = error.config;
-
-    // If error is 401 and we haven't tried to refresh token yet
-    if (error.response?.status === 401 && !originalRequest._retry) {
-      originalRequest._retry = true;
-
-      try {
-        const newToken = await refreshToken();
-        originalRequest.headers.Authorization = `Bearer ${newToken}`;
-        return api(originalRequest);
-      } catch (refreshError) {
-        return Promise.reject(refreshError);
-      }
-    }
-
-    return Promise.reject(error);
-  }
-);
 
 export default api; 

@@ -5,15 +5,17 @@ from .models import User
 class UserSerializer(serializers.ModelSerializer):
     class Meta:
         model = User
-        fields = ('id', 'username', 'email')
+        fields = ('id', 'email', 'is_totp_enabled')
 
 class SignupSerializer(serializers.ModelSerializer):
     password = serializers.CharField(write_only=True, required=True, validators=[validate_password])
 
     class Meta:
         model = User
-        fields = ('username', 'password', 'email')
+        fields = ('email', 'password')
 
     def create(self, validated_data):
+        # Set username to email when creating user
+        validated_data['username'] = validated_data['email']
         user = User.objects.create_user(**validated_data)
         return user 

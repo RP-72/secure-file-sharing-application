@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { useNavigate } from 'react-router-dom';
 import { AppDispatch, RootState } from '../../store/store';
-import { signup, setupTwoFactor, verifyTwoFactor } from '../../features/auth/authAPI';
+import { signup, verifyTwoFactor } from '../../features/auth/authAPI';
 import QRCode from 'react-qr-code';
 import {
   Box,
@@ -24,7 +24,6 @@ const SignupForm = () => {
   const { loading, error, twoFactorSetup } = useSelector((state: RootState) => state.auth);
   const [activeStep, setActiveStep] = useState(0);
   const [formData, setFormData] = useState({
-    username: '',
     email: '',
     password: '',
     confirmPassword: '',
@@ -39,15 +38,13 @@ const SignupForm = () => {
     }
     
     const result = await dispatch(signup({
-      username: formData.username,
       email: formData.email,
       password: formData.password,
     }));
 
     if (signup.fulfilled.match(result)) {
-      // Token is now automatically saved in localStorage by the reducer
-      dispatch(setupTwoFactor());
-      setActiveStep(1);
+      // QR code and secret are now included in the signup response
+      setActiveStep(1);  // Move directly to verification step
     }
   };
 
@@ -56,7 +53,7 @@ const SignupForm = () => {
     const result = await dispatch(verifyTwoFactor(verificationCode));
     if (verifyTwoFactor.fulfilled.match(result)) {
       setActiveStep(2);
-      // Navigate to login after successful signup
+      // Navigate to login after successful signup and 2FA setup
       setTimeout(() => navigate('/login'), 2000);
     }
   };
@@ -80,16 +77,6 @@ const SignupForm = () => {
 
         {activeStep === 0 && (
           <Box component="form" onSubmit={handleSubmit}>
-            <TextField
-              margin="normal"
-              required
-              fullWidth
-              label="Username"
-              name="username"
-              autoComplete="username"
-              value={formData.username}
-              onChange={(e) => setFormData({ ...formData, username: e.target.value })}
-            />
             <TextField
               margin="normal"
               required

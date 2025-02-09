@@ -1,5 +1,5 @@
 import { createSlice, PayloadAction } from '@reduxjs/toolkit';
-import { login, signup, setupTwoFactor, verifyTwoFactor } from './authAPI';
+import { login, signup, verifyTwoFactor, loginVerify2FA } from './authAPI';
 
 interface AuthState {
   user: any | null;
@@ -12,6 +12,9 @@ interface AuthState {
     secret: string | null;
     isComplete: boolean;
   };
+  pendingLoginEmail: string | null;
+  setupToken: string | null;
+  verificationToken: string | null;
 }
 
 const initialState: AuthState = {
@@ -25,6 +28,9 @@ const initialState: AuthState = {
     secret: null,
     isComplete: false,
   },
+  pendingLoginEmail: null,
+  setupToken: null,
+  verificationToken: null,
 };
 
 const authSlice = createSlice({
@@ -45,6 +51,9 @@ const authSlice = createSlice({
       state.user = action.payload;
       state.isAuthenticated = true;
     },
+    setPendingLoginEmail: (state, action) => {
+      state.pendingLoginEmail = action.payload;
+    },
   },
   extraReducers: (builder) => {
     builder
@@ -55,11 +64,15 @@ const authSlice = createSlice({
       })
       .addCase(login.fulfilled, (state, action) => {
         state.loading = false;
-        state.isAuthenticated = true;
-        state.token = action.payload.access;
-        state.user = action.payload.user;
-        localStorage.setItem('token', action.payload.access);
-        localStorage.setItem('refresh_token', action.payload.refresh);
+        if (action.payload.requires_2fa) {
+          state.pendingLoginEmail = action.payload.email;
+          state.verificationToken = action.payload.verification_token;
+        } else if (action.payload.requires_2fa_setup) {
+          state.pendingLoginEmail = action.payload.email;
+          state.twoFactorSetup.qrCode = action.payload.qr_code;
+          state.twoFactorSetup.secret = action.payload.secret;
+          state.verificationToken = action.payload.verification_token;
+        }
       })
       .addCase(login.rejected, (state, action) => {
         state.loading = false;
@@ -73,24 +86,40 @@ const authSlice = createSlice({
       .addCase(signup.fulfilled, (state, action) => {
         state.loading = false;
         state.user = action.payload.user;
-        state.token = action.payload.token;
-        localStorage.setItem('token', action.payload.token);
+        state.twoFactorSetup.qrCode = action.payload.qr_code;
+        state.twoFactorSetup.secret = action.payload.secret;
+        state.verificationToken = action.payload.verification_token;
+        console.log('Stored verification token:', action.payload.verification_token); // Debug log
       })
       .addCase(signup.rejected, (state, action) => {
         state.loading = false;
         state.error = action.error.message || 'Signup failed';
       })
-      // 2FA Setup cases
-      .addCase(setupTwoFactor.fulfilled, (state, action) => {
-        state.twoFactorSetup.qrCode = action.payload.qr_code;
-        state.twoFactorSetup.secret = action.payload.secret;
-      })
       // 2FA Verification cases
       .addCase(verifyTwoFactor.fulfilled, (state) => {
         state.twoFactorSetup.isComplete = true;
+        state.setupToken = null;
+      })
+      // Login 2FA Verification cases
+      .addCase(loginVerify2FA.pending, (state) => {
+        state.loading = true;
+        state.error = null;
+      })
+      .addCase(loginVerify2FA.fulfilled, (state, action) => {
+        state.loading = false;
+        state.isAuthenticated = true;
+        state.token = action.payload.access;
+        state.user = action.payload.user;
+        state.pendingLoginEmail = null;
+        localStorage.setItem('token', action.payload.access);
+        localStorage.setItem('refresh_token', action.payload.refresh);
+      })
+      .addCase(loginVerify2FA.rejected, (state, action) => {
+        state.loading = false;
+        state.error = action.error.message || 'Verification failed';
       });
   },
 });
 
-export const { logout, clearError, setUser } = authSlice.actions;
+export const { logout, clearError, setUser, setPendingLoginEmail } = authSlice.actions;
 export default authSlice.reducer; 

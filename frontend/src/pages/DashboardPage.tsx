@@ -14,10 +14,11 @@ const DashboardPage = () => {
     navigate('/login');
   };
 
+  console.log("user is", user);
   return (
     <Box sx={{ p: 3 }}>
       <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 4 }}>
-        <Typography variant="h4">Welcome, {user?.username}!</Typography>
+        <Typography variant="h4">Welcome, {user?.email}!</Typography>
         <Button 
           variant="contained" 
           color="error" 
