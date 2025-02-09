@@ -21,7 +21,8 @@ def signup(request):
         refresh = RefreshToken.for_user(user)
         return Response({
             'user': UserSerializer(user).data,
-            'token': str(refresh.access_token),
+            'access': str(refresh.access_token),
+            'refresh': str(refresh),
             'message': 'User created successfully'
         }, status=status.HTTP_201_CREATED)
     return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
