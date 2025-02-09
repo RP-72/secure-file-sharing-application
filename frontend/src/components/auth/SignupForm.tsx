@@ -3,6 +3,7 @@ import { useDispatch, useSelector } from 'react-redux';
 import { useNavigate } from 'react-router-dom';
 import { AppDispatch, RootState } from '../../store/store';
 import { signup, verifyTwoFactor } from '../../features/auth/authAPI';
+import { setUser } from '../../features/auth/authSlice';
 import QRCode from 'react-qr-code';
 import {
   Box,
@@ -16,7 +17,7 @@ import {
   StepLabel,
 } from '@mui/material';
 
-const steps = ['Account Details', 'Setup 2FA', 'Verify 2FA'];
+const steps = ['Account Details', 'Setup 2FA', 'Complete'];
 
 const SignupForm = () => {
   const dispatch = useDispatch<AppDispatch>();
@@ -33,7 +34,6 @@ const SignupForm = () => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (formData.password !== formData.confirmPassword) {
-      // Handle password mismatch
       return;
     }
     
@@ -43,8 +43,7 @@ const SignupForm = () => {
     }));
 
     if (signup.fulfilled.match(result)) {
-      // QR code and secret are now included in the signup response
-      setActiveStep(1);  // Move directly to verification step
+      setActiveStep(1);
     }
   };
 
@@ -52,9 +51,14 @@ const SignupForm = () => {
     e.preventDefault();
     const result = await dispatch(verifyTwoFactor(verificationCode));
     if (verifyTwoFactor.fulfilled.match(result)) {
+      // Store user data and tokens
+      dispatch(setUser(result.payload.user));
+      localStorage.setItem('token', result.payload.access);
+      localStorage.setItem('refresh_token', result.payload.refresh);
+      
       setActiveStep(2);
-      // Navigate to login after successful signup and 2FA setup
-      setTimeout(() => navigate('/login'), 2000);
+      // Navigate to dashboard directly
+      setTimeout(() => navigate('/dashboard'), 1500);
     }
   };
 
@@ -74,6 +78,12 @@ const SignupForm = () => {
         </Stepper>
 
         {error && <Alert severity="error" sx={{ mb: 2 }}>{error}</Alert>}
+
+        {activeStep === 2 && (
+          <Alert severity="success" sx={{ mb: 2 }}>
+            Account created successfully! Redirecting to dashboard...
+          </Alert>
+        )}
 
         {activeStep === 0 && (
           <Box component="form" onSubmit={handleSubmit}>
@@ -140,18 +150,11 @@ const SignupForm = () => {
                 fullWidth
                 variant="contained"
                 sx={{ mt: 2 }}
+                disabled={loading}
               >
-                Verify Code
+                {loading ? 'Verifying...' : 'Verify Code'}
               </Button>
             </Box>
-          </Box>
-        )}
-
-        {activeStep === 2 && (
-          <Box sx={{ textAlign: 'center' }}>
-            <Alert severity="success">
-              Account created successfully! You can now log in.
-            </Alert>
           </Box>
         )}
       </Box>

@@ -11,13 +11,20 @@ from django.contrib.auth.hashers import make_password
 from .serializers import SignupSerializer, UserSerializer
 from .models import User
 from rest_framework.views import APIView
+from core.constants import (
+    APP_NAME,
+    VERIFICATION_TOKEN_LIFETIME,
+    ACCESS_TOKEN_LIFETIME,
+    REFRESH_TOKEN_LIFETIME,
+    TOTP_ISSUER
+)
 
 def create_verification_token(user):
     now = datetime.now(timezone.utc)
     payload = {
         'user_id': user.id,
         'token_type': 'verification',
-        'exp': now + timedelta(minutes=5),
+        'exp': now + timedelta(minutes=VERIFICATION_TOKEN_LIFETIME),
         'iat': now
     }
     token = jwt.encode(payload, settings.SECRET_KEY, algorithm='HS256')
@@ -29,13 +36,13 @@ def create_full_access_token(user):
     access_payload = {
         'user_id': user.id,
         'token_type': 'access',
-        'exp': now + timedelta(minutes=60),
+        'exp': now + timedelta(minutes=ACCESS_TOKEN_LIFETIME),
         'iat': now
     }
     refresh_payload = {
         'user_id': user.id,
         'token_type': 'refresh',
-        'exp': now + timedelta(days=7),
+        'exp': now + timedelta(days=REFRESH_TOKEN_LIFETIME),
         'iat': now
     }
     return {
@@ -70,7 +77,7 @@ def signup(request):
         
         provisioning_uri = totp.provisioning_uri(
             name=user.email,
-            issuer_name="Your App Name"
+            issuer_name=TOTP_ISSUER
         )
         
         return Response({
@@ -174,7 +181,7 @@ class CustomTokenObtainPairSerializer(serializers.Serializer):
                     
                     provisioning_uri = totp.provisioning_uri(
                         name=user.email,
-                        issuer_name="Your App Name"
+                        issuer_name=TOTP_ISSUER
                     )
                     
                     return {
