@@ -198,7 +198,7 @@ export const FileList: React.FC<FileListProps> = ({
           open={viewerOpen}
           status={viewerStatus}
           onClose={() => setViewerOpen(false)}
-          fileUrl={selectedFile.url}
+          fileId={selectedFile.id}
           fileType={selectedFile.mime_type}
         />
       )}

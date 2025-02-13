@@ -20,6 +20,7 @@ class File(models.Model):
     owner = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='files')
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
+    iv = models.TextField()  # Store base64 encoded IV
 
     class Meta:
         ordering = ['-created_at']

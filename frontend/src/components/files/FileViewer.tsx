@@ -1,11 +1,15 @@
 import FileViewerComponent from 'react-file-viewer';
 import { Box, CircularProgress, Modal, Typography, Button } from '@mui/material';
 import DownloadIcon from '@mui/icons-material/Download';
+import { decryptFile, importKey } from '../../utils/encryption';
+import { useState, useEffect } from 'react';
+import api from '../../services/api';
+import { Buffer } from 'buffer';
 
 interface FileViewerModalProps {
   open: boolean;
   onClose: () => void;
-  fileUrl: string;
+  fileId: string;
   fileType: string;
   status: string;
 }
@@ -36,15 +40,69 @@ const getFileType = (mimeType: string, fileName: string): string => {
     return extension;
   };
 
-export const FileViewerModal = ({ open, onClose, fileUrl, fileType, status }: FileViewerModalProps) => {
+export const FileViewerModal = ({ open, onClose, fileId, fileType, status }: FileViewerModalProps) => {
+  const [fileUrl, setFileUrl] = useState<string | null>(null);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (open && fileId) {
+      fetchAndDecryptFile();
+    }
+    // Cleanup on unmount or when modal closes
+    return () => {
+      if (fileUrl) {
+        URL.revokeObjectURL(fileUrl);
+        setFileUrl(null);
+      }
+    };
+  }, [open, fileId]);
+
   const onError = (e: any) => {
     console.log('Error viewing file:', e);
-    // You might want to add additional error handling logic here
+    setError('Error viewing file');
   };
 
   const handleDownload = () => {
     if (fileUrl) {
       window.open(fileUrl, '_blank');
+    }
+  };
+
+  const fetchAndDecryptFile = async () => {
+    try {
+      setLoading(true);
+      setError(null);
+      
+      const response = await api.get(`/api/files/${fileId}/`, {
+        responseType: 'arraybuffer',
+      });
+      
+      // Get encryption metadata
+      const metadata = await api.get(`/api/files/${fileId}/metadata/`);
+      const { iv, encryption_key } = metadata.data;
+      
+      // Convert base64 strings back to proper format
+      const ivArray = new Uint8Array(Buffer.from(iv, 'base64'));
+      const key = await importKey(encryption_key);
+      
+      // Decrypt the file
+      const decryptedData = await decryptFile({
+        encryptedData: response.data,
+        iv: ivArray,
+        key,
+      });
+      
+      // Convert to blob and create object URL
+      const blob = new Blob([decryptedData]);
+      const url = URL.createObjectURL(blob);
+      
+      setFileUrl(url);
+    } catch (error) {
+      console.error('Error fetching file:', error);
+      setError('Error loading file');
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -85,19 +143,17 @@ export const FileViewerModal = ({ open, onClose, fileUrl, fileType, status }: Fi
             alignItems: 'center',
           },
         }}>
-          {
-            status === "loaded" ? (
-              <FileViewerComponent
-                fileType={getFileType(fileType, fileUrl)}
-                filePath={fileUrl}
-                onError={onError}
-              />
-            ) : status === "loading" ? (
-              <CircularProgress />
-            ) : (
-              <Typography variant="h6">Error loading file</Typography>
-            )
-          }
+          {loading ? (
+            <CircularProgress />
+          ) : error ? (
+            <Typography variant="h6">{error}</Typography>
+          ) : fileUrl ? (
+            <FileViewerComponent
+              fileType={getFileType(fileType, fileUrl)}
+              filePath={fileUrl}
+              onError={onError}
+            />
+          ) : null}
         </Box>
         <Box sx={{ 
           mt: 2, 

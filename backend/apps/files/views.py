@@ -27,6 +27,7 @@ def upload_file(request):
         }, status=status.HTTP_400_BAD_REQUEST)
     
     uploaded_file = request.FILES['file']
+    iv = request.POST['iv']
     
     # Create file object
     file = File(
@@ -34,7 +35,8 @@ def upload_file(request):
         file=uploaded_file,
         mime_type=uploaded_file.content_type or mimetypes.guess_type(uploaded_file.name)[0],
         size=uploaded_file.size,
-        owner=request.user
+        owner=request.user,
+        iv=iv
     )
     file.save()
     

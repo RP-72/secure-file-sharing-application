@@ -74,23 +74,8 @@ const DashboardPage = () => {
     navigate('/login');
   };
 
-  const handleUpload = async (file: File) => {
-    setLoading(true);
-    const formData = new FormData();
-    formData.append('file', file);
-
-    try {
-      await api.post('/api/files/upload/', formData, {
-        headers: {
-          'Content-Type': 'multipart/form-data',
-        },
-      });
-      fetchFiles();
-    } catch (error) {
-      console.error('Error uploading file:', error);
-    } finally {
-      setLoading(false);
-    }
+  const handleUpload = (file: FileType) => {
+    setFiles([...files, file]);
   };
 
   const handleDelete = async (file: FileType) => {
@@ -227,7 +212,7 @@ const DashboardPage = () => {
       <FileViewerModal
         open={sharedFileView.open}
         onClose={handleCloseSharedView}
-        fileUrl={sharedFileView.fileUrl}
+        fileId={sharedFileView.fileUrl}
         fileType={sharedFileView.fileType}
         status={sharedFileView.status}
       />
