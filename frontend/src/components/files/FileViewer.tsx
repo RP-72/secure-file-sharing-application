@@ -1,5 +1,6 @@
 import FileViewerComponent from 'react-file-viewer';
-import { Box, CircularProgress, Modal, Typography } from '@mui/material';
+import { Box, CircularProgress, Modal, Typography, Button } from '@mui/material';
+import DownloadIcon from '@mui/icons-material/Download';
 
 interface FileViewerModalProps {
   open: boolean;
@@ -41,6 +42,12 @@ export const FileViewerModal = ({ open, onClose, fileUrl, fileType, status }: Fi
     // You might want to add additional error handling logic here
   };
 
+  const handleDownload = () => {
+    if (fileUrl) {
+      window.open(fileUrl, '_blank');
+    }
+  };
+
   return (
     <Modal
       open={open}
@@ -59,23 +66,53 @@ export const FileViewerModal = ({ open, onClose, fileUrl, fileType, status }: Fi
           bgcolor: 'background.paper',
           boxShadow: 24,
           p: 4,
+          display: 'flex',
+          flexDirection: 'column',
         }}
       >
-        {
-          status === "loaded" ? (
-            <FileViewerComponent
-              fileType={getFileType(fileType, fileUrl)}
-              filePath={fileUrl}
-              onError={onError}
-            />
-          ) : status === "loading" ? (
-            <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100%' }}>
+        <Box sx={{ 
+          flex: 1, 
+          display: 'flex', 
+          justifyContent: 'center', 
+          alignItems: 'center',
+          overflow: 'auto',
+          '& .pg-viewer-wrapper': {
+            overflow: 'auto',
+            width: '100%',
+            height: '100%',
+            display: 'flex',
+            justifyContent: 'center',
+            alignItems: 'center',
+          },
+        }}>
+          {
+            status === "loaded" ? (
+              <FileViewerComponent
+                fileType={getFileType(fileType, fileUrl)}
+                filePath={fileUrl}
+                onError={onError}
+              />
+            ) : status === "loading" ? (
               <CircularProgress />
-            </Box>
-          ) : (
-            <Typography variant="h6">Error loading file</Typography>
-          )
-        }
+            ) : (
+              <Typography variant="h6">Error loading file</Typography>
+            )
+          }
+        </Box>
+        <Box sx={{ 
+          mt: 2, 
+          display: 'flex', 
+          justifyContent: 'center'
+        }}>
+          <Button
+            variant="contained"
+            startIcon={<DownloadIcon />}
+            onClick={handleDownload}
+            disabled={!fileUrl}
+          >
+            Download
+          </Button>
+        </Box>
       </Box>
     </Modal>
   );

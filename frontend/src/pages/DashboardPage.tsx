@@ -8,22 +8,31 @@ import {
   Tab,
 } from '@mui/material';
 import { useSelector, useDispatch } from 'react-redux';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { RootState } from '../store/store';
 import { logout } from '../features/auth/authSlice';
 import { FileList } from '../components/files/FileList';
 import { FileUploader } from '../components/files/FileUploader';
 import api from '../services/api';
 import { FileType } from '../types/file';
+import { FileViewerModal } from '../components/files/FileViewer';
+import toast from 'react-hot-toast';
 
 const DashboardPage = () => {
   const { user } = useSelector((state: RootState) => state.auth);
   const dispatch = useDispatch();
   const navigate = useNavigate();
+  const location = useLocation();
   const [files, setFiles] = useState<FileType[]>([]);
   const [loading, setLoading] = useState(false);
   const [activeTab, setActiveTab] = useState(0);
   const [sharedFiles, setSharedFiles] = useState<FileType[]>([]);
+  const [sharedFileView, setSharedFileView] = useState({
+    open: false,
+    fileUrl: '',
+    fileType: '',
+    status: 'loading'
+  });
 
   useEffect(() => {
     if (activeTab === 0) {
@@ -32,6 +41,15 @@ const DashboardPage = () => {
       fetchSharedFiles();
     }
   }, [activeTab]);
+
+  useEffect(() => {
+    // Check if we're trying to view a shared file
+    const match = location.pathname.match(/\/shared\/(.+)/);
+    if (match) {
+      const shareId = match[1];
+      handleSharedFileView(shareId);
+    }
+  }, [location]);
 
   const fetchFiles = async () => {
     try {
@@ -116,6 +134,44 @@ const DashboardPage = () => {
     setActiveTab(newValue);
   };
 
+  const handleSharedFileView = async (shareId: string) => {
+    setSharedFileView(prev => ({ ...prev, open: true, status: 'loading' }));
+    try {
+      const response = await api.get(`/api/files/shared/${shareId}/`, {
+        responseType: 'blob'
+      });
+      
+      const blob = new Blob([response.data]);
+      const blobUrl = window.URL.createObjectURL(blob);
+      setSharedFileView({
+        open: true,
+        fileUrl: blobUrl,
+        fileType: response.headers['content-type'],
+        status: 'loaded'
+      });
+    } catch (error: any) {
+      if (error.response?.status === 410) {
+        toast.error('This share link has expired');
+      } else if (error.response?.status === 404) {
+        toast.error('Share link not found');
+      } else {
+        toast.error('Error loading shared file');
+      }
+      setSharedFileView(prev => ({ ...prev, open: false, status: 'error' }));
+      navigate('/dashboard');
+    }
+  };
+
+  const handleCloseSharedView = () => {
+    setSharedFileView({
+      open: false,
+      fileUrl: '',
+      fileType: '',
+      status: 'loading'
+    });
+    navigate('/dashboard');
+  };
+
   return (
     <Box sx={{ p: 3 }}>
       <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 4 }}>
@@ -167,6 +223,14 @@ const DashboardPage = () => {
           />
         </Paper>
       )}
+
+      <FileViewerModal
+        open={sharedFileView.open}
+        onClose={handleCloseSharedView}
+        fileUrl={sharedFileView.fileUrl}
+        fileType={sharedFileView.fileType}
+        status={sharedFileView.status}
+      />
     </Box>
   );
 };

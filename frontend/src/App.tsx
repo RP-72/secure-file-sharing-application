@@ -5,7 +5,6 @@ import { Toaster } from 'react-hot-toast';
 import LoginPage from './pages/LoginPage';
 import DashboardPage from './pages/DashboardPage';
 import SignupPage from './pages/SignupPage';
-import SharedFilePage from './pages/SharedFilePage';
 import './App.css'
 
 const App = () => {
@@ -27,8 +26,11 @@ const App = () => {
           path="/dashboard"
           element={isAuthenticated ? <DashboardPage /> : <Navigate to="/login" />}
         />
+        <Route
+          path="/shared/*"
+          element={isAuthenticated ? <DashboardPage /> : <Navigate to="/login" />}
+        />
         <Route path="/" element={<Navigate to="/dashboard" />} />
-        <Route path="/files/shared/:shareId" element={<SharedFilePage />} />
       </Routes>
     </Router>
   );
