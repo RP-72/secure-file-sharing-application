@@ -28,3 +28,16 @@ class File(models.Model):
 
     def get_file_url(self):
         return f'/api/files/{self.id}/download/'
+
+class FileShare(models.Model):
+    file = models.ForeignKey('File', on_delete=models.CASCADE, related_name='shares')
+    shared_by = models.ForeignKey('authentication.User', on_delete=models.CASCADE, related_name='shared_files')
+    shared_with = models.ForeignKey('authentication.User', on_delete=models.CASCADE, related_name='received_files')
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        unique_together = ('file', 'shared_with')
+        ordering = ['-created_at']
+
+    def __str__(self):
+        return f"{self.file.name} shared by {self.shared_by.email} with {self.shared_with.email}"

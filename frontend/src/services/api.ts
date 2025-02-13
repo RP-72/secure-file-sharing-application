@@ -2,7 +2,7 @@ import axios from 'axios';
 import { store } from '../store/store';
 import { logout } from '../features/auth/authSlice';
 
-const api = axios.create({
+export const api = axios.create({
   baseURL: 'http://localhost:8000',
   headers: {
     'Content-Type': 'application/json',
@@ -15,7 +15,7 @@ const refreshToken = async () => {
     const refresh = localStorage.getItem('refresh_token');
     if (!refresh) throw new Error('No refresh token');
 
-    const response = await axios.post('http://localhost:8000/api/auth/token/refresh/', {
+    const response = await api.post('/api/auth/token/refresh/', {
       refresh,
     });
 
