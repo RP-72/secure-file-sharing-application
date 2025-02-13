@@ -25,6 +25,16 @@ const LoginForm = () => {
   const navigate = useNavigate();
   const { loading, error, twoFactorSetup } = useSelector((state: RootState) => state.auth);
 
+  const handleLoginSuccess = () => {
+    const redirectPath = localStorage.getItem('redirectAfterLogin');
+    if (redirectPath) {
+      localStorage.removeItem('redirectAfterLogin');
+      navigate(redirectPath);
+    } else {
+      navigate('/dashboard');
+    }
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (step === 1) {
@@ -43,13 +53,13 @@ const LoginForm = () => {
         code: verificationCode
       }));
       if (loginVerify2FA.fulfilled.match(result)) {
-        navigate('/dashboard');
+        handleLoginSuccess();
       }
     } else if (step === 3) {
       // Handle initial 2FA setup verification
       const result = await dispatch(verifyTwoFactor(verificationCode));
       if (verifyTwoFactor.fulfilled.match(result)) {
-        navigate('/dashboard');
+        handleLoginSuccess();
       }
     }
   };

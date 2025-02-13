@@ -31,12 +31,6 @@ class FileSerializer(serializers.ModelSerializer):
         read_only_fields = ['id', 'created_at', 'updated_at', 'url']
 
 class FileShareLinkSerializer(serializers.ModelSerializer):
-    url = serializers.SerializerMethodField()
-    
-    def get_url(self, obj):
-        request = self.context.get('request')
-        return f"{request.scheme}://{request.get_host()}/files/shared/{obj.id}/"
-    
     class Meta:
         model = FileShareLink
-        fields = ('id', 'url', 'created_at', 'expires_at') 
+        fields = ('id', 'created_at', 'expires_at') 

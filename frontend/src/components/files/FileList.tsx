@@ -25,6 +25,8 @@ import { formatFileSize } from '../../utils/formatters';
 import { FileViewerModal } from './FileViewer';
 import LinkIcon from '@mui/icons-material/Link';
 import api from '../../services/api';
+import { getShareUrl } from '../../utils/urls';
+import toast from 'react-hot-toast';
 
 interface FileListProps {
   files: FileType[];
@@ -76,16 +78,18 @@ export const FileList: React.FC<FileListProps> = ({
     setMenuFile(file);
   };
 
-  const handleCreateShareLink = async (file: FileType) => {
+  const handleCreateShareLink = async (fileId: string) => {
     try {
-      const response = await api.post(`/api/files/${file.id}/create-share-link/`);
-      // Copy link to clipboard
-      navigator.clipboard.writeText(response.data.url);
-      // Show success message (you'll need to implement a notification system)
-      alert('Share link copied to clipboard! Link expires in 1 hour.');
+      const response = await api.post(`/api/files/${fileId}/create-share-link/`);
+      const shareId = response.data.id;
+      const shareUrl = getShareUrl(shareId);
+      
+      // Copy to clipboard
+      await navigator.clipboard.writeText(shareUrl);
+      // Show success message
+      toast.success('Share link copied to clipboard');
     } catch (error) {
-      console.error('Error creating share link:', error);
-      alert('Error creating share link');
+      toast.error('Failed to create share link');
     }
   };
 
@@ -166,7 +170,7 @@ export const FileList: React.FC<FileListProps> = ({
           </MenuItem>
         )}
         <MenuItem onClick={() => {
-          if (menuFile) handleCreateShareLink(menuFile);
+          if (menuFile) handleCreateShareLink(menuFile.id);
           handleMenuClose();
         }}>
           <LinkIcon sx={{ mr: 1 }} /> Get Share Link

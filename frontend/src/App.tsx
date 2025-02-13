@@ -1,9 +1,11 @@
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { useSelector } from 'react-redux';
 import { RootState } from './store/store';
+import { Toaster } from 'react-hot-toast';
 import LoginPage from './pages/LoginPage';
 import DashboardPage from './pages/DashboardPage';
 import SignupPage from './pages/SignupPage';
+import SharedFilePage from './pages/SharedFilePage';
 import './App.css'
 
 const App = () => {
@@ -11,6 +13,7 @@ const App = () => {
 
   return (
     <Router>
+      <Toaster position="top-right" />
       <Routes>
         <Route
           path="/login"
@@ -25,6 +28,7 @@ const App = () => {
           element={isAuthenticated ? <DashboardPage /> : <Navigate to="/login" />}
         />
         <Route path="/" element={<Navigate to="/dashboard" />} />
+        <Route path="/files/shared/:shareId" element={<SharedFilePage />} />
       </Routes>
     </Router>
   );

@@ -134,7 +134,7 @@ def create_share_link(request, file_id):
         }, status=status.HTTP_404_NOT_FOUND)
 
 @api_view(['GET'])
-@permission_classes([AllowAny])
+@permission_classes([IsAuthenticated])
 def access_shared_file(request, share_id):
     try:
         share_link = FileShareLink.objects.get(id=share_id)
@@ -147,6 +147,7 @@ def access_shared_file(request, share_id):
         file = share_link.file
         response = FileResponse(file.file, content_type=file.mime_type)
         response['Content-Disposition'] = f'inline; filename="{file.name}"'
+        response['Content-Type'] = file.mime_type  # Explicitly set content type
         return response
     except FileShareLink.DoesNotExist:
         return Response({
