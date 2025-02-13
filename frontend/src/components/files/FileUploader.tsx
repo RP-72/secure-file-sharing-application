@@ -4,7 +4,7 @@ import { Box, Typography, LinearProgress, Button, Modal } from '@mui/material';
 import CloudUploadIcon from '@mui/icons-material/CloudUpload';
 import api from '../../services/api';
 import toast from 'react-hot-toast';
-import { encryptFile, exportKey } from '../../utils/encryption';
+import { encryptFile, exportKey, generateEncryptionKey, storeKeyForFile } from '../../utils/encryption';
 import { Buffer } from 'buffer';
 import { FileType } from '../../types/file';
 
@@ -28,38 +28,34 @@ export const FileUploader: React.FC<FileUploaderProps> = ({ onFileUpload }) => {
     setProgress(0);
 
     try {
-      // First encrypt the file
-      const { encryptedData, iv, key } = await encryptFile(file);
+      // Generate a new encryption key
+      const key = await generateEncryptionKey();
       
-      // Store the encryption key in localStorage or secure storage
-      // We'll need it later for decryption
-      const exportedKey = await exportKey(key);
-      localStorage.setItem(`key-${file.name}`, exportedKey);
+      // Export key to store it
+      const keyString = await exportKey(key);
       
-      // Create a new File object from the encrypted data
-      const encryptedFile = new File(
-        [encryptedData], 
-        file.name, 
-        { type: file.type }
+      // Encrypt file...
+      const { encryptedData, iv } = await encryptFile(
+        await file.arrayBuffer(),
+        key
       );
+      console.log("encryptedData: ", encryptedData, "\n\n", "iv: ", iv)
 
+      const encryptedFile = new File([encryptedData], file.name, { type: file.type });
+      // Upload file...
       const formData = new FormData();
       formData.append('file', encryptedFile);
       formData.append('iv', Buffer.from(iv).toString('base64'));
-      // Note: We're no longer sending the encryption key to the server
 
+      
       const response = await api.post('/api/files/upload/', formData, {
         headers: {
           'Content-Type': 'multipart/form-data',
-        },
-        onUploadProgress: (progressEvent) => {
-          if (progressEvent.total) {
-            const percentCompleted = Math.round((progressEvent.loaded * 100) / progressEvent.total);
-            setProgress(percentCompleted);
-          }
-        },
-      });
-
+        }});
+      
+      // Store the key for later use
+      storeKeyForFile(response.data.id, keyString);
+      
       toast.success('File uploaded successfully');
       const fileData: FileType = {
         id: response.data.id,
@@ -73,8 +69,8 @@ export const FileUploader: React.FC<FileUploaderProps> = ({ onFileUpload }) => {
       };
       await onFileUpload(fileData);
       handleClose();
-      } catch (error) {
-      console.error('Upload error:', error);
+    } catch (error) {
+      console.error('Upload failed:', error);
       toast.error('Failed to upload file');
     } finally {
       setUploading(false);

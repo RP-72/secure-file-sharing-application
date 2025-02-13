@@ -23,21 +23,22 @@ export const generateEncryptionKey = async (): Promise<CryptoKey> => {
   );
 };
 
-export const encryptFile = async (file: File): Promise<EncryptionResult> => {
-  const key = await generateEncryptionKey();
+export const encryptFile = async (
+  fileData: ArrayBuffer,
+  key: CryptoKey
+): Promise<{ encryptedData: ArrayBuffer; iv: Uint8Array }> => {
   const iv = window.crypto.getRandomValues(new Uint8Array(12));
   
-  const fileBuffer = await file.arrayBuffer();
   const encryptedData = await window.crypto.subtle.encrypt(
     {
       name: 'AES-GCM',
       iv,
     },
     key,
-    fileBuffer
+    fileData
   );
 
-  return { encryptedData, iv, key };
+  return { encryptedData, iv };
 };
 
 export const decryptFile = async ({
@@ -56,12 +57,12 @@ export const decryptFile = async ({
 };
 
 export const exportKey = async (key: CryptoKey): Promise<string> => {
-  const exportedKey = await window.crypto.subtle.exportKey('raw', key);
-  return Buffer.from(exportedKey).toString('base64');
+  const exported = await window.crypto.subtle.exportKey('raw', key);
+  return Buffer.from(exported).toString('base64');
 };
 
-export const importKey = async (keyString: string): Promise<CryptoKey> => {
-  const keyBuffer = Buffer.from(keyString, 'base64');
+export const importKey = async (keyData: string): Promise<CryptoKey> => {
+  const keyBuffer = Buffer.from(keyData, 'base64');
   return await window.crypto.subtle.importKey(
     'raw',
     keyBuffer,
@@ -69,4 +70,12 @@ export const importKey = async (keyString: string): Promise<CryptoKey> => {
     true,
     ['encrypt', 'decrypt']
   );
+};
+
+export const storeKeyForFile = (fileId: string, keyString: string) => {
+  sessionStorage.setItem(`file_key_${fileId}`, keyString);
+};
+
+export const getKeyForFile = (fileId: string): string | null => {
+  return sessionStorage.getItem(`file_key_${fileId}`);
 }; 

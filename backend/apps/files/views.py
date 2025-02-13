@@ -1,7 +1,7 @@
 from django.shortcuts import render
 import os
 import mimetypes
-from django.http import FileResponse
+from django.http import FileResponse, HttpResponse, JsonResponse
 from rest_framework import status, viewsets
 from rest_framework.decorators import api_view, permission_classes, action
 from rest_framework.response import Response
@@ -13,6 +13,7 @@ from django.contrib.auth import get_user_model
 from django.db import models
 from django.utils import timezone
 from datetime import timedelta
+from django.core.exceptions import PermissionDenied
 
 User = get_user_model()
 
@@ -59,10 +60,20 @@ def download_file(request, file_id):
             return Response({
                 'error': 'Access denied'
             }, status=status.HTTP_403_FORBIDDEN)
+        
+        # If metadata is requested, return encryption metadata
+        if request.query_params.get('metadata'):
+            return Response({
+                'iv': file.iv,
+                'filename': file.name,
+                'mime_type': file.mime_type,
+            })
             
-        response = FileResponse(file.file, content_type=file.mime_type)
+        # Otherwise return the file content
+        response = FileResponse(file.file, content_type='application/octet-stream')
         response['Content-Disposition'] = f'attachment; filename="{file.name}"'
         return response
+        
     except File.DoesNotExist:
         return Response({
             'error': 'File not found'

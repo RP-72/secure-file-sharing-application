@@ -75,7 +75,7 @@ const DashboardPage = () => {
   };
 
   const handleUpload = (file: FileType) => {
-    setFiles([...files, file]);
+    setFiles([file, ...files]);
   };
 
   const handleDelete = async (file: FileType) => {

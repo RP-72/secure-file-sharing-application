@@ -1,4 +1,3 @@
-
 Task: Embark on an exciting challenge to develop a secure file-sharing web application! This application will enable users to upload, download, and share files with others, all while enforcing stringent security measures. Your mission is to demonstrate your full-stack development expertise and your deep understanding of cybersecurity best practices.
 Core Features:
 1. User Authentication and Authorization:

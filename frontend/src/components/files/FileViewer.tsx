@@ -1,7 +1,7 @@
 import FileViewerComponent from 'react-file-viewer';
 import { Box, CircularProgress, Modal, Typography, Button } from '@mui/material';
 import DownloadIcon from '@mui/icons-material/Download';
-import { decryptFile, importKey } from '../../utils/encryption';
+import { decryptFile, importKey, getKeyForFile } from '../../utils/encryption';
 import { useState, useEffect } from 'react';
 import api from '../../services/api';
 import { Buffer } from 'buffer';
@@ -74,26 +74,34 @@ export const FileViewerModal = ({ open, onClose, fileId, fileType, status }: Fil
       setLoading(true);
       setError(null);
       
-      const response = await api.get(`/api/files/${fileId}/`, {
+      // Get metadata first
+      const metadata = await api.get(`/api/files/${fileId}/download/`, {
+        params: { metadata: true }
+      });
+      const { iv } = metadata.data;
+      
+      // Get the stored key
+      const keyString = getKeyForFile(fileId);
+      if (!keyString) {
+        throw new Error('Encryption key not found');
+      }
+      
+      // Import the key
+      const key = await importKey(keyString);
+      
+      // Then get file content
+      const response = await api.get(`/api/files/${fileId}/download/`, {
         responseType: 'arraybuffer',
       });
       
-      // Get encryption metadata
-      const metadata = await api.get(`/api/files/${fileId}/metadata/`);
-      const { iv, encryption_key } = metadata.data;
-      
-      // Convert base64 strings back to proper format
       const ivArray = new Uint8Array(Buffer.from(iv, 'base64'));
-      const key = await importKey(encryption_key);
       
-      // Decrypt the file
       const decryptedData = await decryptFile({
         encryptedData: response.data,
         iv: ivArray,
         key,
       });
       
-      // Convert to blob and create object URL
       const blob = new Blob([decryptedData]);
       const url = URL.createObjectURL(blob);
       
