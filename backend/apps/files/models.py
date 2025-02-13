@@ -2,6 +2,7 @@ import os
 import uuid
 from django.db import models
 from django.conf import settings
+from django.utils import timezone
 
 def get_file_path(instance, filename):
     # Generate a UUID for the file
@@ -41,3 +42,16 @@ class FileShare(models.Model):
 
     def __str__(self):
         return f"{self.file.name} shared by {self.shared_by.email} with {self.shared_with.email}"
+
+class FileShareLink(models.Model):
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    file = models.ForeignKey('File', on_delete=models.CASCADE, related_name='share_links')
+    created_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
+    created_at = models.DateTimeField(auto_now_add=True)
+    expires_at = models.DateTimeField()
+
+    def is_expired(self):
+        return timezone.now() > self.expires_at
+
+    def __str__(self):
+        return f"Share link for {self.file.name} (expires: {self.expires_at})"

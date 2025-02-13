@@ -1,5 +1,5 @@
 from rest_framework import serializers
-from .models import File, FileShare
+from .models import File, FileShare, FileShareLink
 
 class FileShareSerializer(serializers.ModelSerializer):
     class Meta:
@@ -28,4 +28,15 @@ class FileSerializer(serializers.ModelSerializer):
     class Meta:
         model = File
         fields = ['id', 'name', 'mime_type', 'size', 'created_at', 'updated_at', 'url', 'shared_with', 'owner']
-        read_only_fields = ['id', 'created_at', 'updated_at', 'url'] 
+        read_only_fields = ['id', 'created_at', 'updated_at', 'url']
+
+class FileShareLinkSerializer(serializers.ModelSerializer):
+    url = serializers.SerializerMethodField()
+    
+    def get_url(self, obj):
+        request = self.context.get('request')
+        return f"{request.scheme}://{request.get_host()}/files/shared/{obj.id}/"
+    
+    class Meta:
+        model = FileShareLink
+        fields = ('id', 'url', 'created_at', 'expires_at') 

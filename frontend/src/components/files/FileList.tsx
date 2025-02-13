@@ -23,6 +23,7 @@ import { FileType } from '../../types/file';
 import { ShareFileModal } from './ShareFileModal';
 import { formatFileSize } from '../../utils/formatters';
 import { FileViewerModal } from './FileViewer';
+import LinkIcon from '@mui/icons-material/Link';
 import api from '../../services/api';
 
 interface FileListProps {
@@ -73,6 +74,19 @@ export const FileList: React.FC<FileListProps> = ({
   const handleMenuOpen = (event: React.MouseEvent<HTMLElement>, file: FileType) => {
     setAnchorEl(event.currentTarget);
     setMenuFile(file);
+  };
+
+  const handleCreateShareLink = async (file: FileType) => {
+    try {
+      const response = await api.post(`/api/files/${file.id}/create-share-link/`);
+      // Copy link to clipboard
+      navigator.clipboard.writeText(response.data.url);
+      // Show success message (you'll need to implement a notification system)
+      alert('Share link copied to clipboard! Link expires in 1 hour.');
+    } catch (error) {
+      console.error('Error creating share link:', error);
+      alert('Error creating share link');
+    }
   };
 
   const handleMenuClose = () => {
@@ -129,6 +143,12 @@ export const FileList: React.FC<FileListProps> = ({
         onClose={handleMenuClose}
       >
         <MenuItem onClick={() => {
+          if (menuFile) handleViewFile(menuFile);
+          handleMenuClose();
+        }}>
+          <VisibilityIcon sx={{ mr: 1 }} /> View
+        </MenuItem>
+        <MenuItem onClick={() => {
           if (menuFile) onDownload(menuFile);
           handleMenuClose();
         }}>
@@ -145,6 +165,12 @@ export const FileList: React.FC<FileListProps> = ({
             <ShareIcon sx={{ mr: 1 }} /> Share
           </MenuItem>
         )}
+        <MenuItem onClick={() => {
+          if (menuFile) handleCreateShareLink(menuFile);
+          handleMenuClose();
+        }}>
+          <LinkIcon sx={{ mr: 1 }} /> Get Share Link
+        </MenuItem>
         {onDelete && (
           <MenuItem onClick={() => {
             if (menuFile) onDelete(menuFile);
@@ -153,12 +179,6 @@ export const FileList: React.FC<FileListProps> = ({
             <DeleteIcon sx={{ mr: 1 }} /> Delete
           </MenuItem>
         )}
-        <MenuItem onClick={() => {
-          if (menuFile) handleViewFile(menuFile);
-          handleMenuClose();
-        }}>
-          <VisibilityIcon sx={{ mr: 1 }} /> View
-        </MenuItem>
       </Menu>
 
       {selectedFile && (

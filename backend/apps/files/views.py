@@ -5,12 +5,14 @@ from django.http import FileResponse
 from rest_framework import status, viewsets
 from rest_framework.decorators import api_view, permission_classes, action
 from rest_framework.response import Response
-from rest_framework.permissions import IsAuthenticated
-from .models import File, FileShare
-from .serializers import FileSerializer, FileShareSerializer
+from rest_framework.permissions import IsAuthenticated, AllowAny
+from .models import File, FileShare, FileShareLink
+from .serializers import FileSerializer, FileShareSerializer, FileShareLinkSerializer
 from django.shortcuts import get_object_or_404
 from django.contrib.auth import get_user_model
 from django.db import models
+from django.utils import timezone
+from datetime import timedelta
 
 User = get_user_model()
 
@@ -113,3 +115,40 @@ def shared_with_me(request):
     shared_files = File.objects.filter(shares__shared_with=request.user)
     serializer = FileSerializer(shared_files, many=True)
     return Response(serializer.data)
+
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def create_share_link(request, file_id):
+    try:
+        file = File.objects.get(id=file_id, owner=request.user)
+        share_link = FileShareLink.objects.create(
+            file=file,
+            created_by=request.user,
+            expires_at=timezone.now() + timedelta(seconds=30)
+        )
+        serializer = FileShareLinkSerializer(share_link, context={'request': request})
+        return Response(serializer.data)
+    except File.DoesNotExist:
+        return Response({
+            'error': 'File not found'
+        }, status=status.HTTP_404_NOT_FOUND)
+
+@api_view(['GET'])
+@permission_classes([AllowAny])
+def access_shared_file(request, share_id):
+    try:
+        share_link = FileShareLink.objects.get(id=share_id)
+        
+        if share_link.is_expired():
+            return Response({
+                'error': 'Share link has expired'
+            }, status=status.HTTP_410_GONE)
+            
+        file = share_link.file
+        response = FileResponse(file.file, content_type=file.mime_type)
+        response['Content-Disposition'] = f'inline; filename="{file.name}"'
+        return response
+    except FileShareLink.DoesNotExist:
+        return Response({
+            'error': 'Share link not found'
+        }, status=status.HTTP_404_NOT_FOUND)
