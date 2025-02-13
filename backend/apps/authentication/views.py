@@ -145,7 +145,8 @@ def login_verify_2fa(request):
             }, status=status.HTTP_400_BAD_REQUEST)
             
         totp = pyotp.TOTP(user.totp_secret)
-        if totp.verify(code):
+        verification_result = totp.verify(code)
+        if verification_result:
             tokens = create_full_access_token(user)
             return Response({
                 **tokens,
@@ -158,6 +159,12 @@ def login_verify_2fa(request):
         return Response({
             'error': 'User not found'
         }, status=status.HTTP_404_NOT_FOUND)
+    except Exception as e:
+        print(f"Unexpected error: {str(e)}")
+        return Response({
+            'error': 'Unexpected error occurred',
+            'details': str(e)
+        }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 class CustomTokenObtainPairSerializer(serializers.Serializer):
     email = serializers.EmailField()

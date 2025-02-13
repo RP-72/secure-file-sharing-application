@@ -10,6 +10,7 @@ class FileShareSerializer(serializers.ModelSerializer):
 class FileSerializer(serializers.ModelSerializer):
     url = serializers.SerializerMethodField()
     shared_with = serializers.SerializerMethodField()
+    owner = serializers.SerializerMethodField()
     
     def get_url(self, obj):
         return obj.get_file_url()
@@ -18,7 +19,13 @@ class FileSerializer(serializers.ModelSerializer):
         shares = obj.shares.all()
         return [{'id': share.shared_with.id, 'email': share.shared_with.email} for share in shares]
 
+    def get_owner(self, obj):
+        return {
+            'id': obj.owner.id,
+            'email': obj.owner.email
+        }
+
     class Meta:
         model = File
-        fields = ['id', 'name', 'mime_type', 'size', 'created_at', 'updated_at', 'url', 'shared_with']
+        fields = ['id', 'name', 'mime_type', 'size', 'created_at', 'updated_at', 'url', 'shared_with', 'owner']
         read_only_fields = ['id', 'created_at', 'updated_at', 'url'] 

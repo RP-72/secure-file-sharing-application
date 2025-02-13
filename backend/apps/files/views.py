@@ -10,6 +10,7 @@ from .models import File, FileShare
 from .serializers import FileSerializer, FileShareSerializer
 from django.shortcuts import get_object_or_404
 from django.contrib.auth import get_user_model
+from django.db import models
 
 User = get_user_model()
 
@@ -47,7 +48,14 @@ def list_files(request):
 @permission_classes([IsAuthenticated])
 def download_file(request, file_id):
     try:
-        file = File.objects.get(id=file_id, owner=request.user)
+        file = File.objects.get(id=file_id)
+        
+        # Check if user has access (is owner or file is shared with them)
+        if file.owner != request.user and not file.shares.filter(shared_with=request.user).exists():
+            return Response({
+                'error': 'Access denied'
+            }, status=status.HTTP_403_FORBIDDEN)
+            
         response = FileResponse(file.file, content_type=file.mime_type)
         response['Content-Disposition'] = f'attachment; filename="{file.name}"'
         return response

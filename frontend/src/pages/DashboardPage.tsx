@@ -4,6 +4,8 @@ import {
   Typography, 
   Button,
   Paper,
+  Tabs,
+  Tab,
 } from '@mui/material';
 import { useSelector, useDispatch } from 'react-redux';
 import { useNavigate } from 'react-router-dom';
@@ -20,10 +22,16 @@ const DashboardPage = () => {
   const navigate = useNavigate();
   const [files, setFiles] = useState<FileType[]>([]);
   const [loading, setLoading] = useState(false);
+  const [activeTab, setActiveTab] = useState(0);
+  const [sharedFiles, setSharedFiles] = useState<FileType[]>([]);
 
   useEffect(() => {
-    fetchFiles();
-  }, []);
+    if (activeTab === 0) {
+      fetchFiles();
+    } else {
+      fetchSharedFiles();
+    }
+  }, [activeTab]);
 
   const fetchFiles = async () => {
     try {
@@ -31,6 +39,15 @@ const DashboardPage = () => {
       setFiles(response.data);
     } catch (error) {
       console.error('Error fetching files:', error);
+    }
+  };
+
+  const fetchSharedFiles = async () => {
+    try {
+      const response = await api.get('/api/files/shared_with_me/');
+      setSharedFiles(response.data);
+    } catch (error) {
+      console.error('Error fetching shared files:', error);
     }
   };
 
@@ -95,9 +112,16 @@ const DashboardPage = () => {
     await fetchFiles(); // Refresh the file list after sharing
   };
 
+  const handleTabChange = (event: React.SyntheticEvent, newValue: number) => {
+    setActiveTab(newValue);
+  };
+
   return (
     <Box sx={{ p: 3 }}>
       <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 4 }}>
+        <Typography variant="h4" component="h1">
+          File Dashboard
+        </Typography>
         <Button 
           variant="contained" 
           color="error" 
@@ -107,17 +131,42 @@ const DashboardPage = () => {
         </Button>
       </Box>
 
-      <FileUploader onFileUpload={handleUpload} />
+      <Box sx={{ borderBottom: 1, borderColor: 'divider', mb: 3 }}>
+        <Tabs 
+          value={activeTab} 
+          onChange={handleTabChange}
+          aria-label="file tabs"
+          sx={{ '& .MuiTab-root': { textTransform: 'none' } }}
+        >
+          <Tab label="My Files" />
+          <Tab label="Shared with Me" />
+        </Tabs>
+      </Box>
 
-      <Paper sx={{ mt: 2 }}>
-        <FileList
-          files={files}
-          onDownload={handleDownload}
-          onDelete={handleDelete}
-          onShare={handleShare}
-          showShareOption={true}
-        />
-      </Paper>
+      {activeTab === 0 ? (
+        <>
+          <FileUploader onFileUpload={handleUpload} />
+          <Paper sx={{ mt: 2 }}>
+            <FileList
+              files={files}
+              onDownload={handleDownload}
+              onDelete={handleDelete}
+              onShare={handleShare}
+              showShareOption={true}
+            />
+          </Paper>
+        </>
+      ) : (
+        <Paper>
+          <FileList
+            files={sharedFiles}
+            onDownload={handleDownload}
+            onDelete={undefined} // Disable delete for shared files
+            onShare={undefined} // Disable sharing for shared files
+            showShareOption={false}
+          />
+        </Paper>
+      )}
     </Box>
   );
 };

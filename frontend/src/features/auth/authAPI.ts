@@ -52,8 +52,32 @@ export const verifyTwoFactor = createAsyncThunk(
 
 export const loginVerify2FA = createAsyncThunk(
   'auth/loginVerify2FA',
-  async (data: LoginVerify2FAData) => {
-    const response = await api.post('/api/auth/login-verify-2fa/', data);
-    return response.data;
+  async (data: LoginVerify2FAData, { getState }) => {
+    const state = getState() as RootState;
+    const token = state.auth.verificationToken;
+    
+    console.log('2FA Verification Request:', {
+      data,
+      token,
+      headers: {
+        Authorization: `Bearer ${token}`
+      }
+    });
+
+    try {
+      const response = await api.post('/api/auth/login-verify-2fa/', data, {
+        headers: {
+          Authorization: `Bearer ${token}`
+        }
+      });
+      return response.data;
+    } catch (error) {
+      console.error('2FA Verification Error:', {
+        error,
+        response: error.response?.data,
+        status: error.response?.status
+      });
+      throw error;
+    }
   }
 ); 

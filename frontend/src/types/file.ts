@@ -12,4 +12,8 @@ export interface FileType {
   updated_at: string;
   url: string;
   shared_with?: SharedWithUser[];
+  owner: {
+    id: string;
+    email: string;
+  };
 } 
