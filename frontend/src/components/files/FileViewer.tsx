@@ -163,11 +163,13 @@ export const FileViewerModal = ({ open, onClose, fileId, fileType, fileName }: F
           {loading ? (
             <CircularProgress />
           ) : fileUrl ? (
-            <FileViewerComponent
-              fileType={getFileType(fileType, fileName)}
-              filePath={fileUrl}
-              onError={onError}
-            />
+            <div key={Math.random()} style={{ width: '100%', height: '100%' }}>
+              <FileViewerComponent
+                fileType={getFileType(fileType, fileName)}
+                filePath={fileUrl}
+                onError={onError}
+              />
+            </div>
           ) : null}
         </Box>
         <Box sx={{ 
