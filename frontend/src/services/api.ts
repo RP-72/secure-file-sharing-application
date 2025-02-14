@@ -3,7 +3,7 @@ import { store } from '../store/store';
 import { logout } from '../features/auth/authSlice';
 
 export const api = axios.create({
-  baseURL: 'http://localhost:8000',
+  baseURL: 'https://localhost',
   headers: {
     'Content-Type': 'application/json',
   },

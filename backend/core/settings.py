@@ -30,6 +30,21 @@ SECRET_KEY = os.getenv('SECRET_KEY', 'django-insecure-*6bdjfiqk80+3q^_pfxrjimwy1
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = int(os.getenv('DEBUG', 1))
 
+# Enforce HTTPS redirection
+SECURE_SSL_REDIRECT = True
+
+# If behind a proxy, trust the X-Forwarded-Proto header
+SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
+
+# Ensure cookies are only sent over secure connections
+SESSION_COOKIE_SECURE = True
+CSRF_COOKIE_SECURE = True
+
+# Enable HSTS (HTTP Strict Transport Security)
+SECURE_HSTS_SECONDS = 31536000  # 1 year
+SECURE_HSTS_INCLUDE_SUBDOMAINS = True
+SECURE_HSTS_PRELOAD = True
+
 ALLOWED_HOSTS = os.getenv('DJANGO_ALLOWED_HOSTS', '').split()
 
 JWT_AUTH = {

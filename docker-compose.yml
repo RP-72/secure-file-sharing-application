@@ -6,7 +6,7 @@ services:
       context: .
       dockerfile: docker/backend/Dockerfile
     volumes:
-      - ./backend:/app/backend  # Keeps code in sync
+      - ./backend:/app/backend
       - static_volume:/app/backend/static
       - media_volume:/app/backend/media
       - sqlite_data:/data 
@@ -22,12 +22,14 @@ services:
     volumes:
       - static_volume:/app/backend/static
       - media_volume:/app/backend/media
+      - ./docker/nginx/certs:/etc/nginx/certs:ro
     ports:
       - "80:80"
+      - "443:443"
     depends_on:
       - backend
 
 volumes:
   static_volume:
   media_volume:
-  sqlite_data: 
+  sqlite_data:
