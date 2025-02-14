@@ -205,23 +205,37 @@ const DashboardPage = () => {
       <Box sx={{ borderBottom: 1, borderColor: 'divider', mb: 3 }} />
 
       {/* Only show file uploader for admin and regular users */}
-      {user?.role !== 'guest' && (
-        <Box sx={{ mb: 3 }}>
-          <FileUploader onUploadComplete={fetchFiles} />
-        </Box>
-      )}
 
-      <Box sx={{ borderBottom: 1, borderColor: 'divider', mb: 3 }}>
+      <Box sx={{ borderBottom: 1, borderColor: 'divider', mb: 3, display: 'flex', justifyContent: 'space-between' }}>
         <Tabs 
           value={activeTab} 
           onChange={handleTabChange}
           aria-label="file tabs"
-          sx={{ '& .MuiTab-root': { textTransform: 'none' } }}
+          sx={{
+            '& .MuiTab-root': { 
+              textTransform: 'none',
+              color: '#666666', // gray color for inactive tabs
+              // fontSize: '20px',
+              fontWeight: 500,
+              '&.Mui-selected': {
+                color: '#000000', // black color for active tab
+              }
+            },
+            '& .MuiTabs-indicator': {
+              backgroundColor: '#000000', // black indicator line
+              height: 2,
+            }
+          }}
         >
           <Tab label="My Files" />
           <Tab label="Shared with Me" />
           {user?.role === 'admin' && <Tab label="Manage Users" />}
         </Tabs>
+        {user?.role !== 'guest' && (
+          <Box>
+            <FileUploader onUploadComplete={fetchFiles} />
+          </Box>
+        )}
       </Box>
 
       {activeTab === 0 ? (

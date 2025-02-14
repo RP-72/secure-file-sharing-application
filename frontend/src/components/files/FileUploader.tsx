@@ -96,7 +96,17 @@ export const FileUploader: React.FC<FileUploaderProps> = ({ onUploadComplete }) 
         variant="contained"
         startIcon={<CloudUploadIcon />}
         onClick={handleOpen}
-        style={{position: 'absolute', bottom: '30px', right: '30px'}}
+        sx={{
+          bgcolor: '#000000',
+          color: '#ffffff',
+          '&:hover': {
+            bgcolor: '#333333',
+          },
+          textTransform: 'none',
+          px: 3,
+          py: 1,
+          borderRadius: 1,
+        }}
       >
         Upload File
       </Button>
