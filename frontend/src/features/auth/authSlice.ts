@@ -101,9 +101,18 @@ const authSlice = createSlice({
         state.error = action.error.message || 'Signup failed';
       })
       // 2FA Verification cases
+      .addCase(verifyTwoFactor.pending, (state) => {
+        state.loading = true;
+        state.error = null;
+      })
       .addCase(verifyTwoFactor.fulfilled, (state) => {
+        state.loading = false;
         state.twoFactorSetup.isComplete = true;
         state.setupToken = null;
+      })
+      .addCase(verifyTwoFactor.rejected, (state, action) => {
+        state.loading = false;
+        state.error = (action.payload as any)?.error || action.error.message || 'Verification failed';
       })
       // Login 2FA Verification cases
       .addCase(loginVerify2FA.pending, (state) => {
@@ -121,7 +130,7 @@ const authSlice = createSlice({
       })
       .addCase(loginVerify2FA.rejected, (state, action) => {
         state.loading = false;
-        state.error = action.error.message || 'Verification failed';
+        state.error = (action.payload as any)?.error || action.error.message || 'Verification failed';
       });
   },
 });

@@ -119,7 +119,3 @@ export const importKey = async (keyData: string): Promise<CryptoKey> => {
 export const storeKeyForFile = async (fileId: string, key: CryptoKey): Promise<void> => {
   await storeKeyInKMS(fileId, key);
 };
-
-export const getKeyForFile = (fileId: string): string | null => {
-  return sessionStorage.getItem(`file_key_${fileId}`);
-}; 

@@ -110,6 +110,12 @@ const SignupForm = () => {
     try {
       const response = await dispatch(verifyTwoFactor(code));
       
+      if (verifyTwoFactor.rejected.match(response)) {
+        const errorMessage = (response.payload as any)?.error || 'Verification failed';
+        toast.error(errorMessage);
+        return;
+      }
+
       if (verifyTwoFactor.fulfilled.match(response)) {
         dispatch(setUser(response.payload.user));
         localStorage.setItem('token', response.payload.access);
@@ -119,7 +125,8 @@ const SignupForm = () => {
         navigate('/dashboard');
       }
     } catch (error: any) {
-      toast.error(error.response?.data?.error || '2FA verification failed');
+      const errorMessage = error.response?.data?.error || 'Verification failed';
+      toast.error(errorMessage);
     }
   };
 

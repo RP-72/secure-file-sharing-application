@@ -129,14 +129,16 @@ const LoginForm = () => {
       }));
 
       if (loginVerify2FA.rejected.match(result)) {
-        toast.error('Invalid verification code');
+        const errorMessage = result.error?.message || 'Invalid verification code';
+        toast.error(errorMessage);
         return;
       }
 
       handleLoginSuccess();
       toast.success('Login successful!');
     } catch (error: any) {
-      toast.error(error.response?.data?.error || 'Invalid verification code');
+      const errorMessage = error.response?.data?.error || 'Invalid verification code';
+      toast.error(errorMessage);
     }
   };
 

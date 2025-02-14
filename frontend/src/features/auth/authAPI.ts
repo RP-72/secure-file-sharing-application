@@ -35,24 +35,35 @@ export const signup = createAsyncThunk(
 
 export const verifyTwoFactor = createAsyncThunk(
   'auth/verifyTwoFactor',
-  async (code: string, { getState }) => {
+  async (code: string, { getState, rejectWithValue }) => {
     const state = getState() as RootState;
-    console.log('Verification token being sent:', state.auth.verificationToken);
-    const response = await api.post('/api/auth/verify-2fa/', 
-      { code },
-      {
-        headers: {
-          Authorization: `Bearer ${state.auth.verificationToken}`
+    try {
+      const response = await api.post('/api/auth/verify-2fa/', 
+        { code },
+        {
+          headers: {
+            Authorization: `Bearer ${state.auth.verificationToken}`
+          }
         }
-      }
-    );
-    return response.data;
+      );
+      return response.data;
+    } catch (error: any) {
+      console.error('2FA Setup Verification Error:', {
+        error,
+        response: error.response?.data,
+        status: error.response?.status
+      });
+      
+      return rejectWithValue(error.response?.data || {
+        error: 'Verification failed'
+      });
+    }
   }
 );
 
 export const loginVerify2FA = createAsyncThunk(
   'auth/loginVerify2FA',
-  async (data: LoginVerify2FAData, { getState }) => {
+  async (data: LoginVerify2FAData, { getState, rejectWithValue }) => {
     const state = getState() as RootState;
     const token = state.auth.verificationToken;
     
@@ -71,13 +82,17 @@ export const loginVerify2FA = createAsyncThunk(
         }
       });
       return response.data;
-    } catch (error) {
+    } catch (error: any) {
       console.error('2FA Verification Error:', {
         error,
         response: error.response?.data,
         status: error.response?.status
       });
-      throw error;
+      
+      // Return the error payload to be handled by the rejected action
+      return rejectWithValue(error.response?.data || {
+        error: 'Invalid verification code'
+      });
     }
   }
 ); 
