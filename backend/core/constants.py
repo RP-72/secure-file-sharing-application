@@ -1,5 +1,5 @@
 # Application Information
-APP_NAME = "Abnormal File Sharing"
+APP_NAME = "Secure File Sharing App"
 APP_VERSION = "1.0.0"
 
 # Authentication Settings

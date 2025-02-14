@@ -189,9 +189,9 @@ const DashboardPage = () => {
 
   return (
     <Box sx={{ p: 3 }}>
-      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
-        <Typography variant="h4">Dashboard</Typography>
-        <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+      <Box sx={{ display: 'flex', justifyContent: 'center', position: 'relative', alignItems: 'center', mb: 3 }}>
+        <Typography variant="h4">Secure File Sharing Application</Typography>
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, position: 'absolute', right: 0 }}>
           {/* Add role chip */}
           <Chip 
             label={`Role: ${user?.role}`} 
@@ -202,6 +202,7 @@ const DashboardPage = () => {
           </Button>
         </Box>
       </Box>
+      <Box sx={{ borderBottom: 1, borderColor: 'divider', mb: 3 }} />
 
       {/* Only show file uploader for admin and regular users */}
       {user?.role !== 'guest' && (
