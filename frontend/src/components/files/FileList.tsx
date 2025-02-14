@@ -8,22 +8,18 @@ import {
   IconButton,
   Box,
   Typography,
-  Menu,
-  MenuItem,
+  Tooltip,
   CircularProgress,
 } from '@mui/material';
 import {
-  MoreVert as MoreVertIcon,
-  Download as DownloadIcon,
   Delete as DeleteIcon,
   Share as ShareIcon,
-  Visibility as VisibilityIcon,
+  Link as LinkIcon,
 } from '@mui/icons-material';
 import { FileType } from '../../types/file';
 import { ShareFileModal } from './ShareFileModal';
 import { formatFileSize } from '../../utils/formatters';
 import { FileViewerModal } from './FileViewer';
-import LinkIcon from '@mui/icons-material/Link';
 import api from '../../services/api';
 import { getShareUrl } from '../../utils/urls';
 import toast from 'react-hot-toast';
@@ -98,6 +94,10 @@ export const FileList: React.FC<FileListProps> = ({
     setMenuFile(null);
   };
 
+  const handleRowClick = (file: FileType) => {
+    handleViewFile(file);
+  };
+
   console.log("Files", files)
 
   if (!Array.isArray(files)) {
@@ -121,14 +121,58 @@ export const FileList: React.FC<FileListProps> = ({
         </TableHead>
         <TableBody>
           {files.map((file) => (
-            <TableRow key={file.id}>
+            <TableRow 
+              key={file.id}
+              onClick={() => handleRowClick(file)}
+              sx={{ cursor: 'pointer', '&:hover': { backgroundColor: 'action.hover' } }}
+            >
               <TableCell>{file.name}</TableCell>
               <TableCell>{formatFileSize(file.size)}</TableCell>
               <TableCell>{file.mime_type}</TableCell>
               <TableCell align="right">
-                <IconButton onClick={(e) => handleMenuOpen(e, file)}>
-                  <MoreVertIcon />
-                </IconButton>
+                <Box sx={{ display: 'flex', justifyContent: 'flex-end', gap: 1 }}>
+                  {showShareOption && (
+                    <>
+                      <Tooltip title="Share">
+                        <IconButton
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setSelectedFile(file);
+                            setIsShareModalOpen(true);
+                          }}
+                          size="small"
+                        >
+                          <ShareIcon />
+                        </IconButton>
+                      </Tooltip>
+                      <Tooltip title="Get Share Link">
+                        <IconButton
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleCreateShareLink(file.id);
+                          }}
+                          size="small"
+                        >
+                          <LinkIcon />
+                        </IconButton>
+                      </Tooltip>
+                    </>
+                  )}
+                  {onDelete && (
+                    <Tooltip title="Delete">
+                      <IconButton
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          onDelete(file);
+                        }}
+                        size="small"
+                        sx={{ color: 'error.main' }}
+                      >
+                        <DeleteIcon />
+                      </IconButton>
+                    </Tooltip>
+                  )}
+                </Box>
               </TableCell>
             </TableRow>
           ))}
@@ -141,54 +185,6 @@ export const FileList: React.FC<FileListProps> = ({
         </Box>
       )}
 
-      <Menu
-        anchorEl={anchorEl}
-        open={Boolean(anchorEl)}
-        onClose={handleMenuClose}
-      >
-        <MenuItem onClick={() => {
-          if (menuFile) handleViewFile(menuFile);
-          handleMenuClose();
-        }}>
-          <VisibilityIcon sx={{ mr: 1 }} /> View
-        </MenuItem>
-        <MenuItem onClick={() => {
-          if (menuFile) onDownload(menuFile);
-          handleMenuClose();
-        }}>
-          <DownloadIcon sx={{ mr: 1 }} /> Download
-        </MenuItem>
-        {showShareOption && (
-          <MenuItem onClick={() => {
-            if (menuFile) {
-              setSelectedFile(menuFile);
-              setIsShareModalOpen(true);
-            }
-            handleMenuClose();
-          }}>
-            <ShareIcon sx={{ mr: 1 }} /> Share
-          </MenuItem>
-        )}
-        {
-          showShareOption && (
-            <MenuItem onClick={() => {
-              if (menuFile) handleCreateShareLink(menuFile.id);
-              handleMenuClose();
-            }}>
-              <LinkIcon sx={{ mr: 1 }} /> Get Share Link
-            </MenuItem>
-          )
-        }
-        {onDelete && (
-          <MenuItem onClick={() => {
-            if (menuFile) onDelete(menuFile);
-            handleMenuClose();
-          }} sx={{ color: 'error.main' }}>
-            <DeleteIcon sx={{ mr: 1 }} /> Delete
-          </MenuItem>
-        )}
-      </Menu>
-
       {selectedFile && (
         <ShareFileModal
           open={isShareModalOpen}
@@ -200,10 +196,10 @@ export const FileList: React.FC<FileListProps> = ({
       {selectedFile && (
         <FileViewerModal
           open={viewerOpen}
-          status={viewerStatus}
           onClose={() => setViewerOpen(false)}
           fileId={selectedFile.id}
           fileType={selectedFile.mime_type}
+          fileName={selectedFile.name}
         />
       )}
     </>

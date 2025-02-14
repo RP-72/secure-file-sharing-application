@@ -12,7 +12,7 @@ interface FileViewerModalProps {
   onClose: () => void;
   fileId: string;
   fileType: string;
-  status: string;
+  fileName: string;
 }
 
 const getFileType = (mimeType: string, fileName: string): string => {
@@ -41,7 +41,7 @@ const getFileType = (mimeType: string, fileName: string): string => {
     return extension;
   };
 
-export const FileViewerModal = ({ open, onClose, fileId, fileType, status }: FileViewerModalProps) => {
+export const FileViewerModal = ({ open, onClose, fileId, fileType, fileName }: FileViewerModalProps) => {
   const [fileUrl, setFileUrl] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
 
@@ -58,6 +58,11 @@ export const FileViewerModal = ({ open, onClose, fileId, fileType, status }: Fil
     };
   }, [open, fileId]);
 
+  const handleClose = () => {
+    setFileUrl(null);
+    onClose();
+  }
+
   const onError = (e: any) => {
     console.log('Error viewing file:', e);
     toast.error('Error viewing file');
@@ -65,7 +70,13 @@ export const FileViewerModal = ({ open, onClose, fileId, fileType, status }: Fil
 
   const handleDownload = () => {
     if (fileUrl) {
-      window.open(fileUrl, '_blank');
+      const link = document.createElement('a');
+      link.href = fileUrl;
+      link.download = fileName;
+      
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
     }
   };
 
@@ -110,7 +121,7 @@ export const FileViewerModal = ({ open, onClose, fileId, fileType, status }: Fil
   return (
     <Modal
       open={open}
-      onClose={onClose}
+      onClose={handleClose}
       aria-labelledby="file-viewer-modal"
       aria-describedby="modal-to-view-file-contents"
     >
@@ -120,12 +131,15 @@ export const FileViewerModal = ({ open, onClose, fileId, fileType, status }: Fil
           top: '50%',
           left: '50%',
           transform: 'translate(-50%, -50%)',
-          width: '80%',
+          width: '70%',
           height: '80%',
+          borderRadius: '20px',
+          display: 'flex',
+          justifyContent: 'center',
+          alignItems: 'center',
           bgcolor: 'background.paper',
           boxShadow: 24,
           p: 4,
-          display: 'flex',
           flexDirection: 'column',
         }}
       >
@@ -134,7 +148,9 @@ export const FileViewerModal = ({ open, onClose, fileId, fileType, status }: Fil
           display: 'flex', 
           justifyContent: 'center', 
           alignItems: 'center',
-          overflow: 'auto',
+          width: '99%',
+          height: '100%',
+          overflowY: 'scroll',
           '& .pg-viewer-wrapper': {
             overflow: 'auto',
             width: '100%',
@@ -148,7 +164,7 @@ export const FileViewerModal = ({ open, onClose, fileId, fileType, status }: Fil
             <CircularProgress />
           ) : fileUrl ? (
             <FileViewerComponent
-              fileType={getFileType(fileType, fileUrl)}
+              fileType={getFileType(fileType, fileName)}
               filePath={fileUrl}
               onError={onError}
             />

@@ -33,7 +33,8 @@ const DashboardPage = () => {
     open: false,
     fileUrl: '',
     fileType: '',
-    status: 'loading'
+    status: 'loading',
+    fileName: ''
   });
   const [users, setUsers] = useState<any[]>([]);
 
@@ -159,7 +160,8 @@ const DashboardPage = () => {
         open: true,
         fileUrl: blobUrl,
         fileType: response.headers['content-type'],
-        status: 'loaded'
+        status: 'loaded',
+        fileName: ''
       });
     } catch (error: any) {
       if (error.response?.status === 410) {
@@ -179,7 +181,8 @@ const DashboardPage = () => {
       open: false,
       fileUrl: '',
       fileType: '',
-      status: 'loading'
+      status: 'loading',
+      fileName: ''
     });
     navigate('/dashboard');
   };
@@ -251,7 +254,7 @@ const DashboardPage = () => {
         onClose={handleCloseSharedView}
         fileId={sharedFileView.fileUrl}
         fileType={sharedFileView.fileType}
-        status={sharedFileView.status}
+        fileName={sharedFileView.fileName}
       />
     </Box>
   );
