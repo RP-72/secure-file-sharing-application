@@ -44,5 +44,3 @@ ENV/
 .DS_Store
 Thumbs.db 
 
-docker/
-docker*

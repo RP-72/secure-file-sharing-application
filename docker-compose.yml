@@ -1,0 +1,33 @@
+version: '3.8'
+
+services:
+  backend:
+    build:
+      context: .
+      dockerfile: docker/backend/Dockerfile
+    volumes:
+      - ./backend:/app/backend  # Keeps code in sync
+      - static_volume:/app/backend/static
+      - media_volume:/app/backend/media
+      - sqlite_data:/data 
+    env_file:
+      - .env
+    ports:
+      - "8000:8000"
+
+  nginx:
+    build:
+      context: ./docker/nginx
+      dockerfile: Dockerfile
+    volumes:
+      - static_volume:/app/backend/static
+      - media_volume:/app/backend/media
+    ports:
+      - "80:80"
+    depends_on:
+      - backend
+
+volumes:
+  static_volume:
+  media_volume:
+  sqlite_data: 
