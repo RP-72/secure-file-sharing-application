@@ -7,6 +7,7 @@ from rest_framework import status, serializers
 from rest_framework.decorators import api_view, permission_classes
 from rest_framework.response import Response
 from rest_framework.permissions import AllowAny, IsAuthenticated
+from .permissions import IsAdmin
 from django.contrib.auth.hashers import make_password
 from .serializers import SignupSerializer, UserSerializer
 from .models import User
@@ -66,7 +67,13 @@ def verify_token(token, expected_type='verification'):
 def signup(request):
     serializer = SignupSerializer(data=request.data)
     if serializer.is_valid():
-        user = serializer.save()
+        # Check if this is the first user
+        if User.objects.count() == 0:
+            # First user gets admin role
+            user = serializer.save(role=User.ADMIN)
+        else:
+            # Subsequent users get guest role
+            user = serializer.save(role=User.GUEST)
         
         # Generate TOTP secret during signup
         secret = pyotp.random_base32()
@@ -239,3 +246,71 @@ def refresh_token(request):
         })
     except (jwt.InvalidTokenError, User.DoesNotExist) as e:
         return Response({'error': str(e)}, status=status.HTTP_401_UNAUTHORIZED)
+
+# Add new endpoints for role management
+@api_view(['POST'])
+@permission_classes([IsAdmin])
+def update_user_role(request, user_id):
+    try:
+        target_user = User.objects.get(id=user_id)
+        new_role = request.data.get('role')
+        
+        if new_role not in [User.ADMIN, User.REGULAR, User.GUEST]:
+            return Response({
+                'error': 'Invalid role'
+            }, status=status.HTTP_400_BAD_REQUEST)
+        
+        target_user.role = new_role
+        target_user.save()
+        
+        return Response(UserSerializer(target_user).data)
+    except User.DoesNotExist:
+        return Response({
+            'error': 'User not found'
+        }, status=status.HTTP_404_NOT_FOUND)
+
+@api_view(['GET'])
+@permission_classes([IsAdmin])
+def list_users(request):
+    users = User.objects.all()
+    return Response(UserSerializer(users, many=True).data)
+
+@api_view(['DELETE'])
+@permission_classes([IsAdmin])
+def delete_user(request, user_id):
+    try:
+        # Prevent self-deletion
+        if str(request.user.id) == str(user_id):
+            return Response({
+                'error': 'Cannot delete yourself'
+            }, status=status.HTTP_400_BAD_REQUEST)
+            
+        user = User.objects.get(id=user_id)
+        
+        # Prevent deletion of other admin users
+        if user.role == User.ADMIN:
+            return Response({
+                'error': 'Cannot delete admin user'
+            }, status=status.HTTP_400_BAD_REQUEST)
+
+        # Delete user's files
+        from apps.files.models import File
+        import os
+        
+        try:
+            # Get all files owned by the user
+            user_files = File.objects.filter(owner=user)
+            user_files.delete()
+        except Exception as e:
+            print(f"Error during user file cleanup: {e}")
+            return Response({
+                'error': f'Error cleaning up user files: {str(e)}'
+            }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+        
+        # Finally delete the user
+        user.delete()
+        return Response(status=status.HTTP_204_NO_CONTENT)
+    except User.DoesNotExist:
+        return Response({
+            'error': 'User not found'
+        }, status=status.HTTP_404_NOT_FOUND)

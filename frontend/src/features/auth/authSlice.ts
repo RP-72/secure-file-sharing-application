@@ -2,7 +2,12 @@ import { createSlice, PayloadAction } from '@reduxjs/toolkit';
 import { login, signup, verifyTwoFactor, loginVerify2FA } from './authAPI';
 
 interface AuthState {
-  user: any | null;
+  user: {
+    id: string;
+    email: string;
+    is_totp_enabled: boolean;
+    role: 'admin' | 'regular' | 'guest';
+  } | null;
   token: string | null;
   isAuthenticated: boolean;
   loading: boolean;

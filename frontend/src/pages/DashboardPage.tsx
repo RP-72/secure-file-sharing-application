@@ -6,6 +6,7 @@ import {
   Paper,
   Tabs,
   Tab,
+  Chip,
 } from '@mui/material';
 import { useSelector, useDispatch } from 'react-redux';
 import { useNavigate, useLocation } from 'react-router-dom';
@@ -17,6 +18,7 @@ import api from '../services/api';
 import { FileType } from '../types/file';
 import { FileViewerModal } from '../components/files/FileViewer';
 import toast from 'react-hot-toast';
+import { UserManagement } from '../components/users/UserManagement';
 
 const DashboardPage = () => {
   const { user } = useSelector((state: RootState) => state.auth);
@@ -33,12 +35,15 @@ const DashboardPage = () => {
     fileType: '',
     status: 'loading'
   });
+  const [users, setUsers] = useState<any[]>([]);
 
   useEffect(() => {
     if (activeTab === 0) {
       fetchFiles();
-    } else {
+    } else if (activeTab === 1) {
       fetchSharedFiles();
+    } else if (activeTab === 2 && user?.role === 'admin') {
+      fetchUsers();
     }
   }, [activeTab]);
 
@@ -50,6 +55,18 @@ const DashboardPage = () => {
       handleSharedFileView(shareId);
     }
   }, [location]);
+
+  useEffect(() => {
+    // Log user role when component mounts
+    if (user) {
+      console.log('User Role:', user.role);
+      console.log('User Permissions:', {
+        isAdmin: user.role === 'admin',
+        canUpload: ['admin', 'regular'].includes(user.role),
+        canViewFiles: true // all authenticated users can view files
+      });
+    }
+  }, [user]);
 
   const fetchFiles = async () => {
     try {
@@ -66,6 +83,16 @@ const DashboardPage = () => {
       setSharedFiles(response.data);
     } catch (error) {
       console.error('Error fetching shared files:', error);
+    }
+  };
+
+  const fetchUsers = async () => {
+    try {
+      const response = await api.get('/api/auth/users/');
+      setUsers(response.data);
+    } catch (error) {
+      console.error('Error fetching users:', error);
+      toast.error('Failed to fetch users');
     }
   };
 
@@ -159,18 +186,26 @@ const DashboardPage = () => {
 
   return (
     <Box sx={{ p: 3 }}>
-      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 4 }}>
-        <Typography variant="h4" component="h1">
-          File Dashboard
-        </Typography>
-        <Button 
-          variant="contained" 
-          color="error" 
-          onClick={handleLogout}
-        >
-          Logout
-        </Button>
+      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
+        <Typography variant="h4">Dashboard</Typography>
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+          {/* Add role chip */}
+          <Chip 
+            label={`Role: ${user?.role}`} 
+            color={user?.role === 'admin' ? 'error' : user?.role === 'regular' ? 'primary' : 'default'}
+          />
+          <Button variant="outlined" color="error" onClick={() => dispatch(logout())}>
+            Logout
+          </Button>
+        </Box>
       </Box>
+
+      {/* Only show file uploader for admin and regular users */}
+      {user?.role !== 'guest' && (
+        <Box sx={{ mb: 3 }}>
+          <FileUploader onUploadComplete={fetchFiles} />
+        </Box>
+      )}
 
       <Box sx={{ borderBottom: 1, borderColor: 'divider', mb: 3 }}>
         <Tabs 
@@ -181,12 +216,12 @@ const DashboardPage = () => {
         >
           <Tab label="My Files" />
           <Tab label="Shared with Me" />
+          {user?.role === 'admin' && <Tab label="Manage Users" />}
         </Tabs>
       </Box>
 
       {activeTab === 0 ? (
         <>
-          <FileUploader onFileUpload={handleUpload} />
           <Paper sx={{ mt: 2 }}>
             <FileList
               files={files}
@@ -197,7 +232,7 @@ const DashboardPage = () => {
             />
           </Paper>
         </>
-      ) : (
+      ) : activeTab === 1 ? (
         <Paper>
           <FileList
             files={sharedFiles}
@@ -207,6 +242,8 @@ const DashboardPage = () => {
             showShareOption={false}
           />
         </Paper>
+      ) : (
+        user?.role === 'admin' && <UserManagement users={users} onUpdate={fetchUsers} />
       )}
 
       <FileViewerModal

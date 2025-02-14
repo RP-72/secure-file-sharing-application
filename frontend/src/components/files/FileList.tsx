@@ -169,12 +169,16 @@ export const FileList: React.FC<FileListProps> = ({
             <ShareIcon sx={{ mr: 1 }} /> Share
           </MenuItem>
         )}
-        <MenuItem onClick={() => {
-          if (menuFile) handleCreateShareLink(menuFile.id);
-          handleMenuClose();
-        }}>
-          <LinkIcon sx={{ mr: 1 }} /> Get Share Link
-        </MenuItem>
+        {
+          showShareOption && (
+            <MenuItem onClick={() => {
+              if (menuFile) handleCreateShareLink(menuFile.id);
+              handleMenuClose();
+            }}>
+              <LinkIcon sx={{ mr: 1 }} /> Get Share Link
+            </MenuItem>
+          )
+        }
         {onDelete && (
           <MenuItem onClick={() => {
             if (menuFile) onDelete(menuFile);

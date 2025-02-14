@@ -6,6 +6,7 @@ from rest_framework import status, viewsets
 from rest_framework.decorators import api_view, permission_classes, action
 from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated, AllowAny
+from apps.authentication.permissions import IsRegularUser, IsGuest
 from .models import File, FileShare, FileShareLink
 from .serializers import FileSerializer, FileShareSerializer, FileShareLinkSerializer
 from django.shortcuts import get_object_or_404
@@ -20,7 +21,7 @@ User = get_user_model()
 # Create your views here.
 
 @api_view(['POST'])
-@permission_classes([IsAuthenticated])
+@permission_classes([IsRegularUser])
 def upload_file(request):
     if 'file' not in request.FILES:
         return Response({
@@ -44,7 +45,7 @@ def upload_file(request):
     return Response(FileSerializer(file).data, status=status.HTTP_201_CREATED)
 
 @api_view(['GET'])
-@permission_classes([IsAuthenticated])
+@permission_classes([IsGuest])
 def list_files(request):
     files = File.objects.filter(owner=request.user)
     return Response(FileSerializer(files, many=True).data)
@@ -80,7 +81,7 @@ def download_file(request, file_id):
         }, status=status.HTTP_404_NOT_FOUND)
 
 @api_view(['DELETE'])
-@permission_classes([IsAuthenticated])
+@permission_classes([IsRegularUser])
 def delete_file(request, file_id):
     try:
         file = File.objects.get(id=file_id, owner=request.user)
@@ -93,7 +94,7 @@ def delete_file(request, file_id):
         }, status=status.HTTP_404_NOT_FOUND)
 
 @api_view(['POST'])
-@permission_classes([IsAuthenticated])
+@permission_classes([IsRegularUser])
 def share_file(request, file_id):
     file = get_object_or_404(File, id=file_id, owner=request.user)
     shared_with_email = request.data.get('email')

@@ -9,10 +9,10 @@ import { Buffer } from 'buffer';
 import { FileType } from '../../types/file';
 
 interface FileUploaderProps {
-  onFileUpload: (file: FileType) => void;
+  onUploadComplete: (file: FileType) => void;
 }
 
-export const FileUploader: React.FC<FileUploaderProps> = ({ onFileUpload }) => {
+export const FileUploader: React.FC<FileUploaderProps> = ({ onUploadComplete }) => {
   const [uploading, setUploading] = useState(false);
   const [progress, setProgress] = useState(0);
   const [open, setOpen] = useState(false);
@@ -67,7 +67,7 @@ export const FileUploader: React.FC<FileUploaderProps> = ({ onFileUpload }) => {
         url: response.data.url,
         owner: response.data.owner
       };
-      await onFileUpload(fileData);
+      await onUploadComplete(fileData);
       handleClose();
     } catch (error) {
       console.error('Upload failed:', error);
@@ -76,7 +76,7 @@ export const FileUploader: React.FC<FileUploaderProps> = ({ onFileUpload }) => {
       setUploading(false);
       setProgress(0);
     }
-  }, [onFileUpload]);
+  }, [onUploadComplete]);
 
   const { getRootProps, getInputProps, isDragActive } = useDropzone({
     onDrop,
