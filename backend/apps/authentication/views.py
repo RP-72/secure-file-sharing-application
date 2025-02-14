@@ -19,6 +19,9 @@ from core.constants import (
     REFRESH_TOKEN_LIFETIME,
     TOTP_ISSUER
 )
+from django.contrib.auth import get_user_model
+
+User = get_user_model()
 
 def create_verification_token(user):
     now = datetime.now(timezone.utc)

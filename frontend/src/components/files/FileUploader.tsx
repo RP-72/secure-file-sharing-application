@@ -7,6 +7,7 @@ import toast from 'react-hot-toast';
 import { encryptFile, storeKeyForFile } from '../../utils/encryption';
 import { Buffer } from 'buffer';
 import { FileType } from '../../types/file';
+import { validateFile } from '../../utils/validators';
 
 interface FileUploaderProps {
   onUploadComplete: (file: FileType) => void;
@@ -24,6 +25,14 @@ export const FileUploader: React.FC<FileUploaderProps> = ({ onUploadComplete }) 
     if (acceptedFiles.length === 0) return;
 
     const file = acceptedFiles[0];
+    
+    // Validate file before upload
+    const validation = validateFile(file);
+    if (!validation.isValid) {
+      toast.error(validation.message);
+      return;
+    }
+
     setUploading(true);
     setProgress(0);
 

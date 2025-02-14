@@ -8,11 +8,12 @@ import {
   TextField,
   Typography,
   Container,
-  Alert,
   Link,
 } from '@mui/material';
 import { Link as RouterLink, useNavigate } from 'react-router-dom';
 import QRCode from 'react-qr-code';
+import toast from 'react-hot-toast';
+import { validateEmail, validatePassword, sanitizeLoginInput } from '../../utils/validators';
 
 const LoginForm = () => {
   const [step, setStep] = useState(1);
@@ -23,7 +24,7 @@ const LoginForm = () => {
   const [verificationCode, setVerificationCode] = useState('');
   const dispatch = useDispatch<AppDispatch>();
   const navigate = useNavigate();
-  const { loading, error, twoFactorSetup } = useSelector((state: RootState) => state.auth);
+  const { loading, twoFactorSetup } = useSelector((state: RootState) => state.auth);
 
   const handleLoginSuccess = () => {
     const redirectPath = localStorage.getItem('redirectAfterLogin');
@@ -35,32 +36,87 @@ const LoginForm = () => {
     }
   };
 
+  const validateForm = (): boolean => {
+    // Validate email/username
+    const sanitizedEmail = sanitizeLoginInput(credentials.email);
+    if (!sanitizedEmail) {
+      toast.error('Email is required');
+      return false;
+    } else if (sanitizedEmail.includes('@') && !validateEmail(sanitizedEmail)) {
+      toast.error('Invalid email format');
+      return false;
+    }
+
+    // Validate password
+    const passwordValidation = validatePassword(credentials.password);
+    if (!passwordValidation.isValid) {
+      toast.error(passwordValidation.message);
+      return false;
+    }
+
+    return true;
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (step === 1) {
-      const result = await dispatch(login(credentials));
-      if (login.fulfilled.match(result)) {
-        if (result.payload.requires_2fa) {
-          setStep(2);  // Show verification code input
-        } else if (result.payload.requires_2fa_setup) {
-          setStep(3);  // Show QR code setup
-        }
+    
+    if (!validateForm()) {
+      return;
+    }
+
+    try {
+      const sanitizedCredentials = {
+        email: sanitizeLoginInput(credentials.email),
+        password: credentials.password
+      };
+
+      const result = await dispatch(login(sanitizedCredentials));
+      
+      if (login.rejected.match(result)) {
+        toast.error('Invalid email or password');
+        return;
       }
-    } else if (step === 2) {
-      // Handle 2FA verification
+
+      if (result.payload?.requires_2fa) {
+        setStep(2);
+      } else if (result.payload?.requires_2fa_setup) {
+        setStep(3);
+      } else {
+        handleLoginSuccess();
+        toast.success('Login successful!');
+      }
+
+    } catch (error: any) {
+      let errorMessage = 'Invalid email or password';
+      
+      if (error.response?.status === 429) {
+        errorMessage = 'Too many login attempts. Please try again later.';
+      } else if (error.response?.data?.error) {
+        errorMessage = error.response.data.error;
+      }
+
+      toast.error(errorMessage);
+    }
+  };
+
+  const handleVerificationSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    
+    try {
       const result = await dispatch(loginVerify2FA({
         email: credentials.email,
         code: verificationCode
       }));
-      if (loginVerify2FA.fulfilled.match(result)) {
-        handleLoginSuccess();
+
+      if (loginVerify2FA.rejected.match(result)) {
+        toast.error('Invalid verification code');
+        return;
       }
-    } else if (step === 3) {
-      // Handle initial 2FA setup verification
-      const result = await dispatch(verifyTwoFactor(verificationCode));
-      if (verifyTwoFactor.fulfilled.match(result)) {
-        handleLoginSuccess();
-      }
+
+      handleLoginSuccess();
+      toast.success('Login successful!');
+    } catch (error: any) {
+      toast.error(error.response?.data?.error || 'Invalid verification code');
     }
   };
 
@@ -71,9 +127,11 @@ const LoginForm = () => {
           {step === 1 ? 'Sign in' : (step === 2 ? 'Enter 2FA Code' : 'Setup 2FA')}
         </Typography>
         
-        {error && <Alert severity="error" sx={{ mb: 2 }}>{error}</Alert>}
-        
-        <Box component="form" onSubmit={handleSubmit} sx={{ mt: 1 }}>
+        <Box 
+          component="form" 
+          onSubmit={step === 1 ? handleSubmit : handleVerificationSubmit} 
+          sx={{ mt: 1 }}
+        >
           {step === 1 ? (
             <>
               <TextField

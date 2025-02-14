@@ -15,6 +15,12 @@ from django.db import models
 from django.utils import timezone
 from datetime import timedelta
 from django.core.exceptions import PermissionDenied
+from core.utils.sanitizers import (
+    sanitize_filename, 
+    validate_file_size, 
+    validate_mime_type,
+    sanitize_email
+)
 
 User = get_user_model()
 
@@ -29,13 +35,29 @@ def upload_file(request):
         }, status=status.HTTP_400_BAD_REQUEST)
     
     uploaded_file = request.FILES['file']
-    iv = request.POST['iv']
+    iv = request.POST.get('iv')
     
-    # Create file object
+    # Validate file size
+    if not validate_file_size(uploaded_file.size):
+        return Response({
+            'error': 'File size exceeds maximum limit of 10MB'
+        }, status=status.HTTP_400_BAD_REQUEST)
+    
+    # Sanitize and validate filename
+    safe_filename = sanitize_filename(uploaded_file.name)
+    
+    # Validate mime type
+    mime_type = uploaded_file.content_type or mimetypes.guess_type(safe_filename)[0]
+    if not validate_mime_type(mime_type):
+        return Response({
+            'error': 'Invalid file type'
+        }, status=status.HTTP_400_BAD_REQUEST)
+    
+    # Create file object with sanitized data
     file = File(
-        name=uploaded_file.name,
+        name=safe_filename,
         file=uploaded_file,
-        mime_type=uploaded_file.content_type or mimetypes.guess_type(uploaded_file.name)[0],
+        mime_type=mime_type,
         size=uploaded_file.size,
         owner=request.user,
         iv=iv
@@ -102,14 +124,19 @@ def share_file(request, file_id):
     if not shared_with_email:
         return Response({'error': 'Email is required'}, status=400)
     
+    # Sanitize email
+    sanitized_email = sanitize_email(shared_with_email)
+    if not sanitized_email:
+        return Response({'error': 'Invalid email format'}, status=400)
+    
     try:
-        user_to_share_with = User.objects.get(email=shared_with_email)
+        user_to_share_with = User.objects.get(email=sanitized_email)
     except User.DoesNotExist:
         return Response({'error': 'User not found'}, status=404)
     
     # Don't allow sharing with yourself
     if user_to_share_with == request.user:
-        return Response({'error': 'Cannot share with yourself'}, status=400)
+        return Response({'error': 'You cannot share the file with yourself'}, status=400)
     
     # Check if already shared
     if FileShare.objects.filter(file=file, shared_with=user_to_share_with).exists():

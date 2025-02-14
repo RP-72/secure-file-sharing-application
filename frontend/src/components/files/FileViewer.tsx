@@ -5,6 +5,7 @@ import { decryptFile, getKeyFromKMS } from '../../utils/encryption';
 import { useState, useEffect } from 'react';
 import api from '../../services/api';
 import { Buffer } from 'buffer';
+import toast from 'react-hot-toast';
 
 interface FileViewerModalProps {
   open: boolean;
@@ -43,7 +44,6 @@ const getFileType = (mimeType: string, fileName: string): string => {
 export const FileViewerModal = ({ open, onClose, fileId, fileType, status }: FileViewerModalProps) => {
   const [fileUrl, setFileUrl] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     if (open && fileId) {
@@ -60,7 +60,7 @@ export const FileViewerModal = ({ open, onClose, fileId, fileType, status }: Fil
 
   const onError = (e: any) => {
     console.log('Error viewing file:', e);
-    setError('Error viewing file');
+    toast.error('Error viewing file');
   };
 
   const handleDownload = () => {
@@ -72,7 +72,6 @@ export const FileViewerModal = ({ open, onClose, fileId, fileType, status }: Fil
   const fetchAndDecryptFile = async () => {
     try {
       setLoading(true);
-      setError(null);
       
       // Get metadata first
       const metadata = await api.get(`/api/files/${fileId}/download/`, {
@@ -102,7 +101,7 @@ export const FileViewerModal = ({ open, onClose, fileId, fileType, status }: Fil
       setFileUrl(url);
     } catch (error) {
       console.error('Error fetching file:', error);
-      setError('Error loading file');
+      toast.error('Error loading file');
     } finally {
       setLoading(false);
     }
@@ -147,8 +146,6 @@ export const FileViewerModal = ({ open, onClose, fileId, fileType, status }: Fil
         }}>
           {loading ? (
             <CircularProgress />
-          ) : error ? (
-            <Typography variant="h6">{error}</Typography>
           ) : fileUrl ? (
             <FileViewerComponent
               fileType={getFileType(fileType, fileUrl)}
