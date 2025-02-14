@@ -69,7 +69,11 @@ def upload_file(request):
 @api_view(['GET'])
 @permission_classes([IsGuest])
 def list_files(request):
-    files = File.objects.filter(owner=request.user)
+    # Allow admins to see all files, others only see their own
+    if request.user.role == 'admin':
+        files = File.objects.all()
+    else:
+        files = File.objects.filter(owner=request.user)
     return Response(FileSerializer(files, many=True).data)
 
 @api_view(['GET'])
@@ -78,24 +82,27 @@ def download_file(request, file_id):
     try:
         file = File.objects.get(id=file_id)
         
-        # Check if user has access (is owner or file is shared with them)
-        if file.owner != request.user and not file.shares.filter(shared_with=request.user).exists():
-            return Response({
-                'error': 'Access denied'
-            }, status=status.HTTP_403_FORBIDDEN)
-        
-        # If metadata is requested, return encryption metadata
-        if request.query_params.get('metadata'):
-            return Response({
-                'iv': file.iv,
-                'filename': file.name,
-                'mime_type': file.mime_type,
-            })
+        # Allow access if user is admin, owner, or file is shared with them
+        if (request.user.role == 'admin' or 
+            file.owner == request.user or 
+            file.shares.filter(shared_with=request.user).exists()):
             
-        # Otherwise return the file content
-        response = FileResponse(file.file, content_type='application/octet-stream')
-        response['Content-Disposition'] = f'attachment; filename="{file.name}"'
-        return response
+            # If metadata is requested, return encryption metadata
+            if request.query_params.get('metadata'):
+                return Response({
+                    'iv': file.iv,
+                    'filename': file.name,
+                    'mime_type': file.mime_type,
+                })
+                
+            # Otherwise return the file content
+            response = FileResponse(file.file, content_type='application/octet-stream')
+            response['Content-Disposition'] = f'attachment; filename="{file.name}"'
+            return response
+            
+        return Response({
+            'error': 'Access denied'
+        }, status=status.HTTP_403_FORBIDDEN)
         
     except File.DoesNotExist:
         return Response({
@@ -106,7 +113,12 @@ def download_file(request, file_id):
 @permission_classes([IsRegularUser])
 def delete_file(request, file_id):
     try:
-        file = File.objects.get(id=file_id, owner=request.user)
+        # Allow admins to delete any file, others only their own
+        if request.user.role == 'admin':
+            file = File.objects.get(id=file_id)
+        else:
+            file = File.objects.get(id=file_id, owner=request.user)
+            
         file.file.delete()  # Delete the actual file
         file.delete()  # Delete the database record
         return Response(status=status.HTTP_204_NO_CONTENT)
@@ -118,7 +130,12 @@ def delete_file(request, file_id):
 @api_view(['POST'])
 @permission_classes([IsRegularUser])
 def share_file(request, file_id):
-    file = get_object_or_404(File, id=file_id, owner=request.user)
+    # Allow admins to share any file, others only their own
+    if request.user.role == 'admin':
+        file = get_object_or_404(File, id=file_id)
+    else:
+        file = get_object_or_404(File, id=file_id, owner=request.user)
+        
     shared_with_email = request.data.get('email')
 
     if not shared_with_email:
@@ -161,11 +178,19 @@ def shared_with_me(request):
 @permission_classes([IsAuthenticated])
 def create_share_link(request, file_id):
     try:
-        file = File.objects.get(id=file_id, owner=request.user)
+        # Allow admins to create share links for any file, others only their own
+        if request.user.role == 'admin':
+            file = File.objects.get(id=file_id)
+        else:
+            file = File.objects.get(id=file_id, owner=request.user)
+            
         share_link = FileShareLink.objects.create(
             file=file,
             created_by=request.user,
-            expires_at=timezone.now() + timedelta(seconds=30)
+            expires_at=timezone.now() + timedelta(seconds=10),
+            iv=file.iv,
+            name=file.name,
+            mime_type=file.mime_type
         )
         serializer = FileShareLinkSerializer(share_link, context={'request': request})
         return Response(serializer.data)
@@ -186,6 +211,15 @@ def access_shared_file(request, share_id):
             }, status=status.HTTP_410_GONE)
             
         file = share_link.file
+        
+        # If metadata is requested, return encryption metadata
+        if request.query_params.get('metadata'):
+            return Response({
+                'iv': file.iv,
+                'filename': file.name,
+                'mime_type': file.mime_type,
+            })
+        
         response = FileResponse(file.file, content_type=file.mime_type)
         response['Content-Disposition'] = f'inline; filename="{file.name}"'
         response['Content-Type'] = file.mime_type  # Explicitly set content type

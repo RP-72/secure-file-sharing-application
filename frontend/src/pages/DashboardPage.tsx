@@ -26,17 +26,21 @@ const DashboardPage = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const [files, setFiles] = useState<FileType[]>([]);
-  const [loading, setLoading] = useState(false);
-  const [activeTab, setActiveTab] = useState(0);
+  const [activeTab, setActiveTab] = useState(user?.role === "guest" ? 1 : 0);
   const [sharedFiles, setSharedFiles] = useState<FileType[]>([]);
   const [sharedFileView, setSharedFileView] = useState({
     open: false,
-    fileUrl: '',
+    fileId: '',
     fileType: '',
-    status: 'loading',
     fileName: ''
   });
   const [users, setUsers] = useState<any[]>([]);
+
+  useEffect(() => {
+    if (user?.role === "guest") {
+      setActiveTab(1);
+    }
+  }, [user]);
 
   useEffect(() => {
     if (activeTab === 0) {
@@ -53,6 +57,7 @@ const DashboardPage = () => {
     const match = location.pathname.match(/\/shared\/(.+)/);
     if (match) {
       const shareId = match[1];
+      console.log('shareId', shareId);
       handleSharedFileView(shareId);
     }
   }, [location]);
@@ -147,41 +152,21 @@ const DashboardPage = () => {
     setActiveTab(newValue);
   };
 
-  const handleSharedFileView = async (shareId: string) => {
-    setSharedFileView(prev => ({ ...prev, open: true, status: 'loading' }));
-    try {
-      const response = await api.get(`/api/files/shared/${shareId}/`, {
-        responseType: 'blob'
-      });
-      
-      const blob = new Blob([response.data]);
-      const blobUrl = window.URL.createObjectURL(blob);
-      setSharedFileView({
-        open: true,
-        fileUrl: blobUrl,
-        fileType: response.headers['content-type'],
-        status: 'loaded',
-        fileName: ''
-      });
-    } catch (error: any) {
-      if (error.response?.status === 410) {
-        toast.error('This share link has expired');
-      } else if (error.response?.status === 404) {
-        toast.error('Share link not found');
-      } else {
-        toast.error('Error loading shared file');
-      }
-      setSharedFileView(prev => ({ ...prev, open: false, status: 'error' }));
-      navigate('/dashboard');
-    }
+  const handleSharedFileView = (shareId: string) => {
+    console.log('handleSharedFileView', shareId);
+    setSharedFileView({
+      open: true,
+      fileId: shareId,
+      fileType: '',
+      fileName: ''
+    });
   };
 
   const handleCloseSharedView = () => {
     setSharedFileView({
       open: false,
-      fileUrl: '',
+      fileId: '',
       fileType: '',
-      status: 'loading',
       fileName: ''
     });
     navigate('/dashboard');
@@ -227,9 +212,9 @@ const DashboardPage = () => {
             }
           }}
         >
-          <Tab label="My Files" />
-          <Tab label="Shared with Me" />
-          {user?.role === 'admin' && <Tab label="Manage Users" />}
+          {user?.role !== "guest" && <Tab label={user?.role === "admin" ? "All Files" : "My Files"} value={0} />}
+          {user?.role !== "admin" && <Tab label="Shared with Me" value={1} /> }
+          {user?.role === 'admin' && <Tab label="Manage Users" value={2} />}
         </Tabs>
         {user?.role !== 'guest' && (
           <Box>
@@ -247,6 +232,7 @@ const DashboardPage = () => {
               onDelete={handleDelete}
               onShare={handleShare}
               showShareOption={true}
+              sharedView={false}
             />
           </Paper>
         </>
@@ -258,6 +244,7 @@ const DashboardPage = () => {
             onDelete={undefined} // Disable delete for shared files
             onShare={undefined} // Disable sharing for shared files
             showShareOption={false}
+            sharedView={true}
           />
         </Paper>
       ) : (
@@ -267,9 +254,9 @@ const DashboardPage = () => {
       <FileViewerModal
         open={sharedFileView.open}
         onClose={handleCloseSharedView}
-        fileId={sharedFileView.fileUrl}
-        fileType={sharedFileView.fileType}
+        fileId={sharedFileView.fileId}
         fileName={sharedFileView.fileName}
+        is_shared_link={true}
       />
     </Box>
   );

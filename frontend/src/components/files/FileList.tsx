@@ -23,6 +23,8 @@ import { FileViewerModal } from './FileViewer';
 import api from '../../services/api';
 import { getShareUrl } from '../../utils/urls';
 import toast from 'react-hot-toast';
+import { getKeyFromKMS, storeKeyForFile } from '../../utils/encryption';
+import { kmsApi } from '../../services/kmsApi';
 
 interface FileListProps {
   files: FileType[];
@@ -30,6 +32,7 @@ interface FileListProps {
   onDelete?: (file: FileType) => void;
   onShare?: (file: FileType) => void;
   showShareOption?: boolean;
+  sharedView?: boolean;
 }
 
 
@@ -39,6 +42,7 @@ export const FileList: React.FC<FileListProps> = ({
   onDelete,
   onShare,
   showShareOption = false,
+  sharedView = false
 }) => {
   const [selectedFile, setSelectedFile] = useState<FileType | null>(null);
   const [isShareModalOpen, setIsShareModalOpen] = useState(false);
@@ -69,15 +73,17 @@ export const FileList: React.FC<FileListProps> = ({
     }
   };
 
-  const handleMenuOpen = (event: React.MouseEvent<HTMLElement>, file: FileType) => {
-    setAnchorEl(event.currentTarget);
-    setMenuFile(file);
-  };
-
   const handleCreateShareLink = async (fileId: string) => {
     try {
+      // Create share link and store the encryption key
       const response = await api.post(`/api/files/${fileId}/create-share-link/`);
       const shareId = response.data.id;
+
+      await kmsApi.post(`/copy`, {
+        copy_from_file_id: fileId,
+        copy_to_file_id: shareId
+      });
+
       const shareUrl = getShareUrl(shareId);
       
       // Copy to clipboard
@@ -87,11 +93,6 @@ export const FileList: React.FC<FileListProps> = ({
     } catch (error) {
       toast.error('Failed to create share link');
     }
-  };
-
-  const handleMenuClose = () => {
-    setAnchorEl(null);
-    setMenuFile(null);
   };
 
   const handleRowClick = (file: FileType) => {
@@ -116,7 +117,8 @@ export const FileList: React.FC<FileListProps> = ({
             <TableCell>Name</TableCell>
             <TableCell>Size</TableCell>
             <TableCell>Type</TableCell>
-            <TableCell align="right">Actions</TableCell>
+            <TableCell>Owner</TableCell>
+            {!sharedView && <TableCell align="right">Actions</TableCell>}
           </TableRow>
         </TableHead>
         <TableBody>
@@ -129,51 +131,54 @@ export const FileList: React.FC<FileListProps> = ({
               <TableCell>{file.name}</TableCell>
               <TableCell>{formatFileSize(file.size)}</TableCell>
               <TableCell>{file.mime_type}</TableCell>
-              <TableCell align="right">
-                <Box sx={{ display: 'flex', justifyContent: 'flex-end', gap: 1 }}>
-                  {showShareOption && (
-                    <>
-                      <Tooltip title="Share">
+              <TableCell>{file.owner?.email || 'Unknown'}</TableCell>
+              {!sharedView && 
+                <TableCell align="right">
+                  <Box sx={{ display: 'flex', justifyContent: 'flex-end', gap: 1 }}>
+                    {showShareOption && (
+                      <>
+                        <Tooltip title="Share">
+                          <IconButton
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setSelectedFile(file);
+                              setIsShareModalOpen(true);
+                            }}
+                            size="small"
+                          >
+                            <ShareIcon />
+                          </IconButton>
+                        </Tooltip>
+                        <Tooltip title="Get Share Link">
+                          <IconButton
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleCreateShareLink(file.id);
+                            }}
+                            size="small"
+                          >
+                            <LinkIcon />
+                          </IconButton>
+                        </Tooltip>
+                      </>
+                    )}
+                    {onDelete && (
+                      <Tooltip title="Delete">
                         <IconButton
                           onClick={(e) => {
                             e.stopPropagation();
-                            setSelectedFile(file);
-                            setIsShareModalOpen(true);
+                            onDelete(file);
                           }}
                           size="small"
+                          sx={{ color: 'error.main' }}
                         >
-                          <ShareIcon />
+                          <DeleteIcon />
                         </IconButton>
                       </Tooltip>
-                      <Tooltip title="Get Share Link">
-                        <IconButton
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            handleCreateShareLink(file.id);
-                          }}
-                          size="small"
-                        >
-                          <LinkIcon />
-                        </IconButton>
-                      </Tooltip>
-                    </>
-                  )}
-                  {onDelete && (
-                    <Tooltip title="Delete">
-                      <IconButton
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          onDelete(file);
-                        }}
-                        size="small"
-                        sx={{ color: 'error.main' }}
-                      >
-                        <DeleteIcon />
-                      </IconButton>
-                    </Tooltip>
-                  )}
-                </Box>
-              </TableCell>
+                    )}
+                  </Box>
+                </TableCell>
+              }
             </TableRow>
           ))}
         </TableBody>
@@ -198,7 +203,6 @@ export const FileList: React.FC<FileListProps> = ({
           open={viewerOpen}
           onClose={() => setViewerOpen(false)}
           fileId={selectedFile.id}
-          fileType={selectedFile.mime_type}
           fileName={selectedFile.name}
         />
       )}

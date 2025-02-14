@@ -50,9 +50,12 @@ class FileShareLink(models.Model):
     created_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
     created_at = models.DateTimeField(auto_now_add=True)
     expires_at = models.DateTimeField()
+    iv = models.TextField()  # Store the IV
+    name = models.CharField(max_length=255)  # Store the filename
+    mime_type = models.CharField(max_length=255)  # Store the MIME type
 
     def is_expired(self):
         return timezone.now() > self.expires_at
 
     def __str__(self):
-        return f"Share link for {self.file.name} (expires: {self.expires_at})"
+        return f"Share link for {self.name} (expires: {self.expires_at})"

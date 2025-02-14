@@ -13,5 +13,5 @@ COPY frontend .
 
 EXPOSE 5174
 
-# Update the start command to include host flag
-CMD ["npm", "run", "dev", "--", "--host", "0.0.0.0"] 
+# Clear Vite cache and start the development server
+CMD rm -rf node_modules/.vite && npm run dev -- --host 0.0.0.0 

@@ -14,6 +14,10 @@ router = APIRouter()
 class KeyRequest(BaseModel):
     encryption_key: str
 
+class KeyCopyRequest(BaseModel):
+    copy_from_file_id: str
+    copy_to_file_id: str
+
 @router.post("/keys/{file_id}")
 async def store_key(
     file_id: str,
@@ -88,7 +92,42 @@ async def get_key(
     except Exception as e:
         raise HTTPException(status_code=500, detail="Failed to decrypt key")
 
+@router.post("/copy")
+async def copy_key(
+    key_copy: KeyCopyRequest,
+    db: Session = Depends(get_db),
+    authorization: str = Header(None)
+):
+    """Copy an encryption key from one file to another"""
+    if not authorization:
+        raise HTTPException(status_code=401, detail="No authorization token provided")
+    
+    # Extract token from Bearer header
+    try:
+        token = authorization.split("Bearer ")[1]
+    except IndexError:
+        raise HTTPException(status_code=401, detail="Invalid authorization header")
+    
+    # Get the source key entry
+    source_key = db.query(KeyEntry).filter(KeyEntry.file_id == key_copy.copy_from_file_id).first()
+    if not source_key:
+        raise HTTPException(status_code=404, detail="Source key not found")
+    
+    try:
+        # Create new key entry with the same encryption key
+        new_key_entry = KeyEntry(
+            file_id=key_copy.copy_to_file_id,
+            encryption_key=source_key.encryption_key
+        )
+        
+        db.add(new_key_entry)
+        db.commit()
+        return {"status": "success"}
+    except Exception as e:
+        db.rollback()
+        raise HTTPException(status_code=500, detail="Failed to copy key")
+
 def verify_auth(auth_token: str, file_id: str) -> bool:
     """Verify the authentication token and user's permission to access the file"""
-    # TODO: Implement authentication verification with backend service
+    # TODO: Implement authentication verification
     pass 

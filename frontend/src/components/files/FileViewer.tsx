@@ -11,11 +11,11 @@ interface FileViewerModalProps {
   open: boolean;
   onClose: () => void;
   fileId: string;
-  fileType: string;
   fileName: string;
+  is_shared_link?: boolean;
 }
 
-const getFileType = (mimeType: string, fileName: string): string => {
+const getFileType = (mimeType: string | null, fileName: string): string => {
     // Map MIME types to file types that react-file-viewer supports
     const mimeMap: { [key: string]: string } = {
       'application/pdf': 'pdf',
@@ -32,7 +32,7 @@ const getFileType = (mimeType: string, fileName: string): string => {
       'audio/wav': 'wav',
     };
 
-    const type = mimeMap[mimeType];
+    const type = mimeMap[mimeType ?? ''];
     if (type) return type;
 
     // Fallback to file extension
@@ -41,13 +41,24 @@ const getFileType = (mimeType: string, fileName: string): string => {
     return extension;
   };
 
-export const FileViewerModal = ({ open, onClose, fileId, fileType, fileName }: FileViewerModalProps) => {
+export const FileViewerModal = ({ 
+  open, 
+  onClose, 
+  fileId, 
+  fileName, 
+  is_shared_link = false 
+}: FileViewerModalProps) => {
   const [fileUrl, setFileUrl] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+  const [mimeType, setMimeType] = useState<string | null>(null);
 
   useEffect(() => {
     if (open && fileId) {
-      fetchAndDecryptFile();
+      if (is_shared_link) {
+        fetchAndDecryptSharedFile();
+      } else {
+        fetchAndDecryptFile();
+      }
     }
     // Cleanup on unmount or when modal closes
     return () => {
@@ -80,6 +91,53 @@ export const FileViewerModal = ({ open, onClose, fileId, fileType, fileName }: F
     }
   };
 
+  const fetchAndDecryptSharedFile = async () => {
+    try {
+      console.log('Fetching and decrypting shared file');
+      setLoading(true);
+      
+      // Get metadata first
+      const metadata = await api.get(`/api/files/shared/${fileId}/`, {
+        params: { metadata: true }
+      });
+      const { iv, mime_type } = metadata.data;
+      setMimeType(mime_type);
+      
+      // Get the encryption key for the shared file
+      const key = await getKeyFromKMS(fileId);
+      
+      // Get the encrypted file content
+      const response = await api.get(`/api/files/shared/${fileId}/`, {
+        responseType: 'arraybuffer'
+      });
+      
+      const ivArray = new Uint8Array(Buffer.from(iv, 'base64'));
+      
+      const decryptedData = await decryptFile({
+        encryptedData: response.data,
+        iv: ivArray,
+        key,
+      });
+      
+      const blob = new Blob([decryptedData]);
+      const url = URL.createObjectURL(blob);
+      setFileUrl(url);
+      
+    } catch (error: any) {
+      console.error('Error fetching shared file:', error);
+      if (error.response?.status === 410) {
+        toast.error('This share link has expired');
+        handleClose()
+      } else if (error.response?.status === 404) {
+        toast.error('Share link not found');
+      } else {
+        toast.error('Error loading shared file');
+      }
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const fetchAndDecryptFile = async () => {
     try {
       setLoading(true);
@@ -88,7 +146,8 @@ export const FileViewerModal = ({ open, onClose, fileId, fileType, fileName }: F
       const metadata = await api.get(`/api/files/${fileId}/download/`, {
         params: { metadata: true }
       });
-      const { iv } = metadata.data;
+      const { iv, mime_type } = metadata.data;
+      setMimeType(mime_type);
       
       // Get the key from KMS
       const key = await getKeyFromKMS(fileId);
@@ -165,7 +224,7 @@ export const FileViewerModal = ({ open, onClose, fileId, fileType, fileName }: F
           ) : fileUrl ? (
             <div key={Math.random()} style={{ width: '100%', height: '100%' }}>
               <FileViewerComponent
-                fileType={getFileType(fileType, fileName)}
+                fileType={getFileType(mimeType, fileName)}
                 filePath={fileUrl}
                 onError={onError}
               />

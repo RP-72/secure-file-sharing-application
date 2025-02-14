@@ -67,7 +67,6 @@ INSTALLED_APPS = [
     # Local apps
     'apps.authentication.apps.AuthenticationConfig',
     'apps.files.apps.FilesConfig',
-    'apps.sharing.apps.SharingConfig',
 ]
 
 MIDDLEWARE = [
