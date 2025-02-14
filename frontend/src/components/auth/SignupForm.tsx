@@ -20,6 +20,7 @@ import {
   ListItemText,
   IconButton,
   InputAdornment,
+  Stack,
 } from '@mui/material';
 import {
   Check as CheckIcon,
@@ -56,7 +57,7 @@ const SignupForm = () => {
     number: false,
     special: false,
   });
-  const [twoFactorCode, setTwoFactorCode] = useState('');
+  const [twoFactorCode, setTwoFactorCode] = useState(['', '', '', '', '', '']);
 
   const updatePasswordChecks = (password: string) => {
     setPasswordChecks({
@@ -84,10 +85,30 @@ const SignupForm = () => {
     }
   };
 
+  const handle2FAInputChange = (index: number, value: string) => {
+    if (!/^\d*$/.test(value)) return; // Only allow digits
+    
+    const newCode = [...twoFactorCode];
+    newCode[index] = value;
+    setTwoFactorCode(newCode);
+
+    // Auto-focus next input
+    if (value && index < 5) {
+      const nextInput = document.querySelector(`input[name="2fa-${index + 1}"]`) as HTMLInputElement;
+      if (nextInput) nextInput.focus();
+    }
+  };
+
   const handleComplete2FA = async (e: React.FormEvent) => {
     e.preventDefault();
+    const code = twoFactorCode.join('');
+    if (code.length !== 6) {
+      toast.error('Please enter all 6 digits');
+      return;
+    }
+    
     try {
-      const response = await dispatch(verifyTwoFactor(twoFactorCode));
+      const response = await dispatch(verifyTwoFactor(code));
       
       if (verifyTwoFactor.fulfilled.match(response)) {
         dispatch(setUser(response.payload.user));
@@ -205,21 +226,37 @@ const SignupForm = () => {
               Scan this QR code with Google Authenticator
             </Typography>
             <QRCode value={twoFactorSetup.qrCode} />
-            <Box component="form" onSubmit={handleComplete2FA}>
-              <TextField
-                margin="normal"
-                required
-                fullWidth
-                label="Verification Code"
-                value={twoFactorCode}
-                onChange={(e) => setTwoFactorCode(e.target.value)}
-              />
+            <Box component="form" onSubmit={handleComplete2FA} sx={{ mt: 3 }}>
+              <Typography variant="body1" sx={{ mb: 2 }}>
+                Enter the 6-digit code from your authenticator app
+              </Typography>
+              <Stack direction="row" spacing={1} justifyContent="center" sx={{ mb: 3 }}>
+                {[0, 1, 2, 3, 4, 5].map((index) => (
+                  <TextField
+                    key={index}
+                    name={`2fa-${index}`}
+                    value={twoFactorCode[index]}
+                    onChange={(e) => handle2FAInputChange(index, e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Backspace' && !twoFactorCode[index] && index > 0) {
+                        const prevInput = document.querySelector(`input[name="2fa-${index - 1}"]`) as HTMLInputElement;
+                        if (prevInput) prevInput.focus();
+                      }
+                    }}
+                    inputProps={{
+                      maxLength: 1,
+                      style: { textAlign: 'center', fontSize: '1.5rem', padding: '8px' },
+                      autoFocus: index === 0,
+                    }}
+                    sx={{ width: '48px' }}
+                  />
+                ))}
+              </Stack>
               <Button
                 type="submit"
                 fullWidth
                 variant="contained"
-                sx={{ mt: 2 }}
-                disabled={loading}
+                disabled={loading || twoFactorCode.join('').length !== 6}
               >
                 {loading ? 'Verifying...' : 'Verify Code'}
               </Button>

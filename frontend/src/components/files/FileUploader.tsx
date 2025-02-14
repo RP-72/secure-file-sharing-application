@@ -51,13 +51,7 @@ export const FileUploader: React.FC<FileUploaderProps> = ({ onUploadComplete }) 
       const response = await api.post('/api/files/upload/', formData, {
         headers: {
           'Content-Type': 'multipart/form-data',
-        },
-        // onUploadProgress: (progressEvent) => {
-        //   const percentCompleted = Math.round(
-        //     (progressEvent.loaded * 100) / progressEvent.total
-        //   );
-        //   setProgress(percentCompleted);
-        // },
+        }
       });
       
       // Store the encryption key in KMS after successful file upload

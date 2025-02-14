@@ -9,6 +9,7 @@ import {
   Typography,
   Container,
   Link,
+  Stack,
 } from '@mui/material';
 import { Link as RouterLink, useNavigate } from 'react-router-dom';
 import QRCode from 'react-qr-code';
@@ -21,10 +22,10 @@ const LoginForm = () => {
     email: '',
     password: '',
   });
-  const [verificationCode, setVerificationCode] = useState('');
+  const [verificationCode, setVerificationCode] = useState<string[]>(['', '', '', '', '', '']);
   const dispatch = useDispatch<AppDispatch>();
   const navigate = useNavigate();
-  const { loading, twoFactorSetup } = useSelector((state: RootState) => state.auth);
+  const { loading } = useSelector((state: RootState) => state.auth);
 
   const handleLoginSuccess = () => {
     const redirectPath = localStorage.getItem('redirectAfterLogin');
@@ -99,13 +100,32 @@ const LoginForm = () => {
     }
   };
 
+  const handle2FAInputChange = (index: number, value: string) => {
+    if (!/^\d*$/.test(value)) return; // Only allow digits
+    
+    const newCode = [...verificationCode];
+    newCode[index] = value;
+    setVerificationCode(newCode);
+
+    // Auto-focus next input
+    if (value && index < 5) {
+      const nextInput = document.querySelector(`input[name="2fa-login-${index + 1}"]`) as HTMLInputElement;
+      if (nextInput) nextInput.focus();
+    }
+  };
+
   const handleVerificationSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    const code = verificationCode.join('');
+    if (code.length !== 6) {
+      toast.error('Please enter all 6 digits');
+      return;
+    }
     
     try {
       const result = await dispatch(loginVerify2FA({
         email: credentials.email,
-        code: verificationCode
+        code: code
       }));
 
       if (loginVerify2FA.rejected.match(result)) {
@@ -157,30 +177,35 @@ const LoginForm = () => {
               />
             </>
           ) : step === 2 ? (
-            <TextField
-              margin="normal"
-              required
-              fullWidth
-              label="Verification Code"
-              value={verificationCode}
-              onChange={(e) => setVerificationCode(e.target.value)}
-            />
+            <>
+              <Typography variant="body1" sx={{ mb: 2, textAlign: 'center' }}>
+                Enter the 6-digit code from your authenticator app
+              </Typography>
+              <Stack direction="row" spacing={1} justifyContent="center" sx={{ mb: 3 }}>
+                {[0, 1, 2, 3, 4, 5].map((index) => (
+                  <TextField
+                    key={index}
+                    name={`2fa-login-${index}`}
+                    value={verificationCode[index]}
+                    onChange={(e) => handle2FAInputChange(index, e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Backspace' && !verificationCode[index] && index > 0) {
+                        const prevInput = document.querySelector(`input[name="2fa-login-${index - 1}"]`) as HTMLInputElement;
+                        if (prevInput) prevInput.focus();
+                      }
+                    }}
+                    inputProps={{
+                      maxLength: 1,
+                      style: { textAlign: 'center', fontSize: '1.5rem', padding: '8px' },
+                      autoFocus: index === 0,
+                    }}
+                    sx={{ width: '48px' }}
+                  />
+                ))}
+              </Stack>
+            </>
           ) : (
             <>
-              <Box sx={{ textAlign: 'center', mb: 2 }}>
-                <Typography variant="h6" sx={{ mb: 2 }}>
-                  Scan this QR code with Google Authenticator
-                </Typography>
-                <QRCode value={twoFactorSetup.qrCode!} />
-              </Box>
-              <TextField
-                margin="normal"
-                required
-                fullWidth
-                label="Verification Code"
-                value={verificationCode}
-                onChange={(e) => setVerificationCode(e.target.value)}
-              />
             </>
           )}
           
