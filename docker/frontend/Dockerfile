@@ -11,7 +11,7 @@ RUN npm install --legacy-peer-deps
 # Copy the rest of the code
 COPY frontend .
 
-EXPOSE 3000
+EXPOSE 5174
 
 # Update the start command to include host flag
 CMD ["npm", "run", "dev", "--", "--host", "0.0.0.0"] 

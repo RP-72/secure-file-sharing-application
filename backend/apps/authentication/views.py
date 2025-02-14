@@ -317,3 +317,87 @@ def delete_user(request, user_id):
         return Response({
             'error': 'User not found'
         }, status=status.HTTP_404_NOT_FOUND)
+
+class SignupInitView(APIView):
+    permission_classes = []
+
+    def post(self, request):
+        serializer = UserSerializer(data=request.data)
+        if serializer.is_valid():
+            # Don't save the user yet, just validate the data
+            email = serializer.validated_data['email']
+            password = serializer.validated_data['password']
+
+            # Check if user already exists
+            if User.objects.filter(email=email).exists():
+                return Response(
+                    {'error': 'User with this email already exists'},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+
+            # Generate and send 2FA code
+            two_factor_code = generate_2fa_code()
+            send_2fa_email(email, two_factor_code)
+
+            # Create temporary token with user data and 2FA code
+            temp_token = jwt.encode({
+                'email': email,
+                'password': password,
+                'two_factor_code': two_factor_code,
+                'exp': datetime.utcnow() + timedelta(minutes=10)
+            }, settings.SECRET_KEY, algorithm='HS256')
+
+            return Response({
+                'message': '2FA code sent to email',
+                'temp_token': temp_token
+            }, status=status.HTTP_200_OK)
+        
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+class SignupCompleteView(APIView):
+    permission_classes = []
+
+    def post(self, request):
+        temp_token = request.data.get('temp_token')
+        submitted_code = request.data.get('two_factor_code')
+
+        try:
+            # Decode the temporary token
+            payload = jwt.decode(
+                temp_token, 
+                settings.SECRET_KEY, 
+                algorithms=['HS256']
+            )
+
+            # Verify 2FA code
+            if submitted_code != payload['two_factor_code']:
+                return Response(
+                    {'error': 'Invalid 2FA code'},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+
+            # Create the user
+            user = User.objects.create_user(
+                email=payload['email'],
+                password=payload['password']
+            )
+
+            # Generate access and refresh tokens
+            access_token = generate_access_token(user)
+            refresh_token = generate_refresh_token(user)
+
+            return Response({
+                'access': access_token,
+                'refresh': refresh_token
+            }, status=status.HTTP_201_CREATED)
+
+        except jwt.ExpiredSignatureError:
+            return Response(
+                {'error': '2FA session expired'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        except jwt.InvalidTokenError:
+            return Response(
+                {'error': 'Invalid token'},
+                status=status.HTTP_400_BAD_REQUEST
+            )

@@ -192,6 +192,7 @@ const SignupForm = () => {
               variant="contained"
               sx={{ mt: 3 }}
               disabled={loading || !allChecksPass}
+              onClick={handleInitialSignup}
             >
               {loading ? 'Creating Account...' : 'Create Account'}
             </Button>
