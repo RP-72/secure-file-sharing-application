@@ -1,4 +1,5 @@
 import { Buffer } from 'buffer';
+import { kmsApi } from '../services/kmsApi';
 
 export interface EncryptionResult {
   encryptedData: ArrayBuffer;
@@ -10,6 +11,50 @@ export interface DecryptionParams {
   encryptedData: ArrayBuffer;
   iv: Uint8Array;
   key: CryptoKey;
+}
+
+// Function to get encryption key from KMS
+export async function getKeyFromKMS(fileId: string): Promise<CryptoKey> {
+  try {
+    const response = await kmsApi.get(`/keys/${fileId}`);
+    const keyBase64 = response.data.encryption_key;
+    
+    // Convert base64 key to ArrayBuffer
+    const keyBytes = Uint8Array.from(atob(keyBase64), c => c.charCodeAt(0));
+    
+    // Import the key for use with Web Crypto API
+    return await window.crypto.subtle.importKey(
+      "raw",
+      keyBytes,
+      { name: "AES-GCM" },
+      false,
+      ["encrypt", "decrypt"]
+    );
+  } catch (error) {
+    console.error('Error getting key from KMS:', error);
+    throw new Error('Failed to retrieve encryption key');
+  }
+}
+
+// Function to store encryption key in KMS
+async function storeKeyInKMS(fileId: string, key: CryptoKey): Promise<void> {
+  try {
+    // Export the key to raw format
+    const exportedKey = await window.crypto.subtle.exportKey("raw", key);
+    
+    // Convert to base64 string
+    const keyBase64 = btoa(
+      String.fromCharCode(...new Uint8Array(exportedKey))
+    );
+    
+    // Store key in KMS
+    await kmsApi.post(`/keys/${fileId}`, {
+      encryption_key: keyBase64
+    });
+  } catch (error) {
+    console.error('Error storing key in KMS:', error);
+    throw new Error('Failed to store encryption key');
+  }
 }
 
 export const generateEncryptionKey = async (): Promise<CryptoKey> => {
@@ -25,10 +70,9 @@ export const generateEncryptionKey = async (): Promise<CryptoKey> => {
 
 export const encryptFile = async (
   fileData: ArrayBuffer,
-  key: CryptoKey
-): Promise<{ encryptedData: ArrayBuffer; iv: Uint8Array }> => {
+): Promise<{ encryptedData: ArrayBuffer; iv: Uint8Array; key: CryptoKey }> => {
   const iv = window.crypto.getRandomValues(new Uint8Array(12));
-  
+  const key = await generateEncryptionKey();
   const encryptedData = await window.crypto.subtle.encrypt(
     {
       name: 'AES-GCM',
@@ -38,7 +82,7 @@ export const encryptFile = async (
     fileData
   );
 
-  return { encryptedData, iv };
+  return { encryptedData, iv, key };
 };
 
 export const decryptFile = async ({
@@ -72,8 +116,8 @@ export const importKey = async (keyData: string): Promise<CryptoKey> => {
   );
 };
 
-export const storeKeyForFile = (fileId: string, keyString: string) => {
-  sessionStorage.setItem(`file_key_${fileId}`, keyString);
+export const storeKeyForFile = async (fileId: string, key: CryptoKey): Promise<void> => {
+  await storeKeyInKMS(fileId, key);
 };
 
 export const getKeyForFile = (fileId: string): string | null => {

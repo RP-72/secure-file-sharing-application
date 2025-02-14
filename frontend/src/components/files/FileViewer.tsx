@@ -1,7 +1,7 @@
 import FileViewerComponent from 'react-file-viewer';
 import { Box, CircularProgress, Modal, Typography, Button } from '@mui/material';
 import DownloadIcon from '@mui/icons-material/Download';
-import { decryptFile, importKey, getKeyForFile } from '../../utils/encryption';
+import { decryptFile, getKeyFromKMS } from '../../utils/encryption';
 import { useState, useEffect } from 'react';
 import api from '../../services/api';
 import { Buffer } from 'buffer';
@@ -80,14 +80,8 @@ export const FileViewerModal = ({ open, onClose, fileId, fileType, status }: Fil
       });
       const { iv } = metadata.data;
       
-      // Get the stored key
-      const keyString = getKeyForFile(fileId);
-      if (!keyString) {
-        throw new Error('Encryption key not found');
-      }
-      
-      // Import the key
-      const key = await importKey(keyString);
+      // Get the key from KMS
+      const key = await getKeyFromKMS(fileId);
       
       // Then get file content
       const response = await api.get(`/api/files/${fileId}/download/`, {

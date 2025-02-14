@@ -4,7 +4,7 @@ import { Box, Typography, LinearProgress, Button, Modal } from '@mui/material';
 import CloudUploadIcon from '@mui/icons-material/CloudUpload';
 import api from '../../services/api';
 import toast from 'react-hot-toast';
-import { encryptFile, exportKey, generateEncryptionKey, storeKeyForFile } from '../../utils/encryption';
+import { encryptFile, storeKeyForFile } from '../../utils/encryption';
 import { Buffer } from 'buffer';
 import { FileType } from '../../types/file';
 
@@ -28,33 +28,31 @@ export const FileUploader: React.FC<FileUploaderProps> = ({ onUploadComplete }) 
     setProgress(0);
 
     try {
-      // Generate a new encryption key
-      const key = await generateEncryptionKey();
-      
-      // Export key to store it
-      const keyString = await exportKey(key);
-      
-      // Encrypt file...
-      const { encryptedData, iv } = await encryptFile(
-        await file.arrayBuffer(),
-        key
+      // Encrypt file and get the key
+      const { encryptedData, iv, key } = await encryptFile(
+        await file.arrayBuffer()
       );
-      console.log("encryptedData: ", encryptedData, "\n\n", "iv: ", iv)
 
       const encryptedFile = new File([encryptedData], file.name, { type: file.type });
-      // Upload file...
       const formData = new FormData();
       formData.append('file', encryptedFile);
       formData.append('iv', Buffer.from(iv).toString('base64'));
 
-      
+      // Upload encrypted file
       const response = await api.post('/api/files/upload/', formData, {
         headers: {
           'Content-Type': 'multipart/form-data',
-        }});
+        },
+        // onUploadProgress: (progressEvent) => {
+        //   const percentCompleted = Math.round(
+        //     (progressEvent.loaded * 100) / progressEvent.total
+        //   );
+        //   setProgress(percentCompleted);
+        // },
+      });
       
-      // Store the key for later use
-      storeKeyForFile(response.data.id, keyString);
+      // Store the encryption key in KMS after successful file upload
+      await storeKeyForFile(response.data.id, key);
       
       toast.success('File uploaded successfully');
       const fileData: FileType = {
