@@ -37,12 +37,12 @@ services:
       - ./kms:/app/kms
       - kms_data:/data
     environment:
-      - KMS_MASTER_KEY=${KMS_MASTER_KEY}
-      - DATABASE_URL=postgresql://${KMS_DB_USER}:${KMS_DB_PASSWORD}@kms-db:5432/${KMS_DB_NAME}
-      - KMS_DB_USER=${KMS_DB_USER}
-      - KMS_DB_PASSWORD=${KMS_DB_PASSWORD}
-      - KMS_DB_NAME=${KMS_DB_NAME}
-      - POSTGRES_PASSWORD=${KMS_DB_PASSWORD}
+      - KMS_MASTER_KEY=${KMS_MASTER_KEY:-$(openssl rand -hex 32)}
+      - DATABASE_URL=postgresql://${KMS_DB_USER:-kmsuser}:${KMS_DB_PASSWORD:-kmsdb_pswd}@kms-db:5432/${KMS_DB_NAME:-kmsdb}
+      - KMS_DB_USER=${KMS_DB_USER:-kmsuser}
+      - KMS_DB_PASSWORD=${KMS_DB_PASSWORD:-kmsdb_pswd}
+      - KMS_DB_NAME=${KMS_DB_NAME:-kmsdb}
+      - POSTGRES_PASSWORD=${KMS_DB_PASSWORD:-kmsdb_pswd}
     ports:
       - "5001:5001"
     depends_on:
@@ -53,9 +53,9 @@ services:
   kms-db:
     image: postgres:13-alpine
     environment:
-      - POSTGRES_DB=${KMS_DB_NAME}
-      - POSTGRES_USER=${KMS_DB_USER}
-      - POSTGRES_PASSWORD=${KMS_DB_PASSWORD}
+      - POSTGRES_DB=${KMS_DB_NAME:-kmsdb}
+      - POSTGRES_USER=${KMS_DB_USER:-kmsuser}
+      - POSTGRES_PASSWORD=${KMS_DB_PASSWORD:-kmsdb_pswd}
     volumes:
       - kms_db_data:/var/lib/postgresql/data
     networks:
